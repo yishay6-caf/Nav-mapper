@@ -81,6 +81,7 @@ import com.subnavar.app.domain.model.Floor
 import com.subnavar.app.domain.model.Waypoint
 import com.subnavar.app.ui.common.EmptyStateMessage
 import com.subnavar.app.ui.common.LoadingIndicator
+import com.subnavar.app.util.FileLogger
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -99,14 +100,16 @@ fun FloorPlanScreen(
     val floorPlanPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
+        FileLogger.log("FLOORPLAN_SCREEN", "floorPlanPicker callback: uri=$uri")
         uri?.let {
             try {
                 context.contentResolver.takePersistableUriPermission(
                     it,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
-            } catch (_: Exception) {
-                // Permission may already be granted or not persistable
+                FileLogger.log("FLOORPLAN_SCREEN", "takePersistableUriPermission OK")
+            } catch (e: Exception) {
+                FileLogger.logError("FLOORPLAN_SCREEN", "takePersistableUriPermission failed (non-fatal)", e)
             }
             viewModel.importFloorPlan(it)
         }
@@ -165,12 +168,18 @@ fun FloorPlanScreen(
                         if (uiState.selectedFloor?.planImagePath == null) {
                             ExtendedFloatingActionButton(
                                 onClick = {
-                                    floorPlanPicker.launch(
-                                        arrayOf(
-                                            "image/*",
-                                            "application/pdf"
+                                    FileLogger.log("FLOORPLAN_SCREEN", "Import Plan button clicked")
+                                    try {
+                                        floorPlanPicker.launch(
+                                            arrayOf(
+                                                "image/*",
+                                                "application/pdf"
+                                            )
                                         )
-                                    )
+                                        FileLogger.log("FLOORPLAN_SCREEN", "floorPlanPicker.launch() succeeded")
+                                    } catch (e: Exception) {
+                                        FileLogger.logError("FLOORPLAN_SCREEN", "floorPlanPicker.launch() CRASHED", e)
+                                    }
                                 },
                                 icon = { Icon(Icons.Default.Upload, "Import") },
                                 text = { Text("Import Plan") }

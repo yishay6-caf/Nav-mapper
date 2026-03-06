@@ -11,6 +11,7 @@ import com.subnavar.app.domain.model.Floor
 import com.subnavar.app.domain.model.Waypoint
 import com.subnavar.app.domain.model.WaypointType
 import com.subnavar.app.domain.repository.BuildingRepository
+import com.subnavar.app.util.FileLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,14 +61,17 @@ class MappingViewModel @Inject constructor(
     private val floorId: Long = savedStateHandle.get<Long>("floorId") ?: 0
 
     init {
+        FileLogger.log("MAPPING_VM", "init: buildingId=$buildingId, floorId=$floorId")
         _uiState.value = _uiState.value.copy(buildingId = buildingId)
         loadFloorData()
     }
 
     private fun loadFloorData() {
+        FileLogger.log("MAPPING_VM", "loadFloorData")
         viewModelScope.launch {
             val floor = repository.getFloorById(floorId)
             val count = repository.getWaypointCount(floorId)
+            FileLogger.log("MAPPING_VM", "loadFloorData: floor=${floor?.name}, planPath=${floor?.planImagePath}, waypointCount=$count")
             _uiState.value = _uiState.value.copy(
                 floor = floor,
                 waypointCount = count,
@@ -83,6 +87,7 @@ class MappingViewModel @Inject constructor(
     }
 
     fun startMapping() {
+        FileLogger.log("MAPPING_VM", "startMapping")
         _uiState.value = _uiState.value.copy(
             isMappingActive = true,
             statusMessage = "Mapping active - walk and place waypoints"
@@ -90,6 +95,7 @@ class MappingViewModel @Inject constructor(
     }
 
     fun stopMapping() {
+        FileLogger.log("MAPPING_VM", "stopMapping")
         _uiState.value = _uiState.value.copy(
             isMappingActive = false,
             statusMessage = "Mapping paused"
@@ -106,6 +112,7 @@ class MappingViewModel @Inject constructor(
     }
 
     fun showWaypointDialog() {
+        FileLogger.log("MAPPING_VM", "showWaypointDialog")
         _uiState.value = _uiState.value.copy(showWaypointDialog = true)
     }
 
@@ -120,6 +127,7 @@ class MappingViewModel @Inject constructor(
         planY: Float,
         capturedBitmap: Bitmap?
     ) {
+        FileLogger.log("MAPPING_VM", "placeWaypoint: label=$label, type=$type, planX=$planX, planY=$planY")
         val state = _uiState.value
         val trackingInfo = arSessionManager.getCurrentTrackingInfo()
 
@@ -254,10 +262,12 @@ class MappingViewModel @Inject constructor(
     fun isARCoreSupported(): Boolean = arSessionManager.isARCoreSupported()
 
     fun setViewMode(mode: MappingViewMode) {
+        FileLogger.log("MAPPING_VM", "setViewMode: $mode")
         _uiState.value = _uiState.value.copy(viewMode = mode)
     }
 
     fun markLocationOnPlan(planX: Float, planY: Float) {
+        FileLogger.log("MAPPING_VM", "markLocationOnPlan: x=$planX, y=$planY")
         _uiState.value = _uiState.value.copy(
             isMarkingOnPlan = true,
             pendingPlanX = planX,

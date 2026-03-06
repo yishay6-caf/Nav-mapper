@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.subnavar.app.domain.repository.BuildingRepository
+import com.subnavar.app.util.FileLogger
 import com.subnavar.app.util.LocaleManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,17 +31,20 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
+        FileLogger.log("SETTINGS_VM", "init")
         _uiState.value = _uiState.value.copy(
             language = LocaleManager.getLanguage(context)
         )
     }
 
     fun setLanguage(language: LocaleManager.AppLanguage) {
+        FileLogger.log("SETTINGS_VM", "setLanguage: $language")
         LocaleManager.setLanguage(context, language)
         _uiState.value = _uiState.value.copy(language = language)
     }
 
     fun exportData(uri: Uri) {
+        FileLogger.log("SETTINGS_VM", "exportData: uri=$uri")
         viewModelScope.launch {
             try {
                 val buildings = repository.getAllBuildings().first()
@@ -55,6 +59,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun importData(uri: Uri) {
+        FileLogger.log("SETTINGS_VM", "importData: uri=$uri")
         viewModelScope.launch {
             try {
                 val buildingId = repository.insertBuilding(

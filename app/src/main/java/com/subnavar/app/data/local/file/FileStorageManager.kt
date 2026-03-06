@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import com.subnavar.app.util.FileLogger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,17 +38,24 @@ class FileStorageManager @Inject constructor(
 
     suspend fun importFloorPlan(buildingId: Long, floorId: Long, uri: Uri): String =
         withContext(Dispatchers.IO) {
+            FileLogger.log("FILE_STORAGE", "importFloorPlan: buildingId=$buildingId, floorId=$floorId, uri=$uri")
             val floorDir = getFloorDir(buildingId, floorId)
+            FileLogger.log("FILE_STORAGE", "importFloorPlan: floorDir=${floorDir.absolutePath}, exists=${floorDir.exists()}")
             val contentType = context.contentResolver.getType(uri) ?: ""
+            FileLogger.log("FILE_STORAGE", "importFloorPlan: contentType=$contentType")
             val targetFile = if (contentType.contains("pdf")) {
+                FileLogger.log("FILE_STORAGE", "importFloorPlan: converting PDF to image")
                 convertPdfToImage(uri, floorDir)
             } else {
+                FileLogger.log("FILE_STORAGE", "importFloorPlan: copying image file")
                 copyImageFile(uri, floorDir)
             }
+            FileLogger.log("FILE_STORAGE", "importFloorPlan: result=${targetFile.absolutePath}, size=${targetFile.length()}")
             targetFile.absolutePath
         }
 
     private fun convertPdfToImage(uri: Uri, floorDir: File): File {
+        FileLogger.log("FILE_STORAGE", "convertPdfToImage: start")
         val pdfFile = File(floorDir, "plan_temp.pdf")
         context.contentResolver.openInputStream(uri)?.use { input ->
             FileOutputStream(pdfFile).use { output ->
@@ -82,12 +90,17 @@ class FileStorageManager @Inject constructor(
     }
 
     private fun copyImageFile(uri: Uri, floorDir: File): File {
+        FileLogger.log("FILE_STORAGE", "copyImageFile: start")
         val outputFile = File(floorDir, "plan.jpg")
-        context.contentResolver.openInputStream(uri)?.use { input ->
+        val inputStream = context.contentResolver.openInputStream(uri)
+        FileLogger.log("FILE_STORAGE", "copyImageFile: inputStream=${inputStream != null}")
+        inputStream?.use { input ->
             FileOutputStream(outputFile).use { output ->
-                input.copyTo(output)
+                val bytes = input.copyTo(output)
+                FileLogger.log("FILE_STORAGE", "copyImageFile: copied $bytes bytes")
             }
         }
+        FileLogger.log("FILE_STORAGE", "copyImageFile: outputFile=${outputFile.absolutePath}, size=${outputFile.length()}")
         return outputFile
     }
 

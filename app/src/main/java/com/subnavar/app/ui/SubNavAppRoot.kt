@@ -28,6 +28,7 @@ import com.subnavar.app.ui.mapping.MappingScreen
 import com.subnavar.app.ui.navigation.NavigationScreen
 import com.subnavar.app.ui.settings.SettingsScreen
 import com.subnavar.app.ui.streetview.StreetViewScreen
+import com.subnavar.app.util.FileLogger
 import com.subnavar.app.util.LocaleManager
 import com.subnavar.app.util.Strings
 import com.subnavar.app.util.Strings.get
@@ -107,23 +108,29 @@ fun SubNavAppRoot() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.FloorPlan.route) {
+                FileLogger.log("NAV", "Composing FloorPlanScreen")
                 FloorPlanScreen(
                     onNavigateToMapping = { buildingId, floorId ->
+                        FileLogger.log("NAV", "Navigate to Mapping: building=$buildingId, floor=$floorId")
                         navController.navigate(Screen.Mapping.createRoute(buildingId, floorId))
                     },
                     onNavigateToStreetView = { waypointId ->
+                        FileLogger.log("NAV", "Navigate to StreetView: waypoint=$waypointId")
                         navController.navigate(Screen.StreetView.createRoute(waypointId))
                     }
                 )
             }
             composable(Screen.Navigate.route) {
+                FileLogger.log("NAV", "Composing NavigationScreen")
                 NavigationScreen(
                     onNavigateToStreetView = { waypointId ->
+                        FileLogger.log("NAV", "Navigate to StreetView from Nav: waypoint=$waypointId")
                         navController.navigate(Screen.StreetView.createRoute(waypointId))
                     }
                 )
             }
             composable(Screen.Settings.route) {
+                FileLogger.log("NAV", "Composing SettingsScreen")
                 SettingsScreen()
             }
             composable(

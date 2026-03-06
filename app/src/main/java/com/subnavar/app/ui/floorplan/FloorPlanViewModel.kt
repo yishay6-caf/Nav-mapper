@@ -7,6 +7,7 @@ import com.subnavar.app.domain.model.Building
 import com.subnavar.app.domain.model.Floor
 import com.subnavar.app.domain.model.Waypoint
 import com.subnavar.app.domain.repository.BuildingRepository
+import com.subnavar.app.util.FileLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,18 +37,22 @@ class FloorPlanViewModel @Inject constructor(
     val uiState: StateFlow<FloorPlanUiState> = _uiState.asStateFlow()
 
     init {
+        FileLogger.log("FLOORPLAN_VM", "init")
         loadBuildings()
     }
 
     private fun loadBuildings() {
+        FileLogger.log("FLOORPLAN_VM", "loadBuildings")
         viewModelScope.launch {
             repository.getAllBuildings().collect { buildings ->
+                FileLogger.log("FLOORPLAN_VM", "loadBuildings: got ${buildings.size} buildings")
                 _uiState.value = _uiState.value.copy(buildings = buildings)
             }
         }
     }
 
     fun selectBuilding(building: Building) {
+        FileLogger.log("FLOORPLAN_VM", "selectBuilding: ${building.name} (id=${building.id})")
         _uiState.value = _uiState.value.copy(
             selectedBuilding = building,
             selectedFloor = null,
@@ -65,6 +70,7 @@ class FloorPlanViewModel @Inject constructor(
     }
 
     fun selectFloor(floor: Floor) {
+        FileLogger.log("FLOORPLAN_VM", "selectFloor: ${floor.name} (id=${floor.id}, planPath=${floor.planImagePath})")
         _uiState.value = _uiState.value.copy(selectedFloor = floor)
         loadWaypoints(floor.id)
     }
@@ -86,6 +92,7 @@ class FloorPlanViewModel @Inject constructor(
     }
 
     fun addBuilding(name: String, description: String?) {
+        FileLogger.log("FLOORPLAN_VM", "addBuilding: name=$name")
         viewModelScope.launch {
             val building = Building(name = name, description = description)
             val id = repository.insertBuilding(building)
@@ -106,6 +113,7 @@ class FloorPlanViewModel @Inject constructor(
     }
 
     fun addFloor(name: String, level: Int) {
+        FileLogger.log("FLOORPLAN_VM", "addFloor: name=$name, level=$level")
         val building = _uiState.value.selectedBuilding ?: return
         viewModelScope.launch {
             val floor = Floor(
@@ -123,19 +131,33 @@ class FloorPlanViewModel @Inject constructor(
     }
 
     fun importFloorPlan(uri: Uri) {
-        val building = _uiState.value.selectedBuilding ?: return
-        val floor = _uiState.value.selectedFloor ?: return
+        FileLogger.log("FLOORPLAN_VM", "importFloorPlan called with uri=$uri")
+        val building = _uiState.value.selectedBuilding
+        if (building == null) {
+            FileLogger.log("FLOORPLAN_VM", "importFloorPlan: selectedBuilding is null, aborting")
+            return
+        }
+        val floor = _uiState.value.selectedFloor
+        if (floor == null) {
+            FileLogger.log("FLOORPLAN_VM", "importFloorPlan: selectedFloor is null, aborting")
+            return
+        }
+        FileLogger.log("FLOORPLAN_VM", "importFloorPlan: building=${building.id}, floor=${floor.id}")
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
+                FileLogger.log("FLOORPLAN_VM", "importFloorPlan: calling repository.importFloorPlan")
                 val path = repository.importFloorPlan(building.id, floor.id, uri)
+                FileLogger.log("FLOORPLAN_VM", "importFloorPlan: got path=$path")
                 val updated = floor.copy(planImagePath = path)
                 repository.updateFloor(updated)
+                FileLogger.log("FLOORPLAN_VM", "importFloorPlan: floor updated successfully")
                 _uiState.value = _uiState.value.copy(
                     selectedFloor = updated,
                     isLoading = false
                 )
             } catch (e: Exception) {
+                FileLogger.logError("FLOORPLAN_VM", "importFloorPlan FAILED", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = "Failed to import floor plan: ${e.message}"
@@ -145,6 +167,7 @@ class FloorPlanViewModel @Inject constructor(
     }
 
     fun deleteBuilding() {
+        FileLogger.log("FLOORPLAN_VM", "deleteBuilding")
         val building = _uiState.value.selectedBuilding ?: return
         viewModelScope.launch {
             repository.deleteBuilding(building.id)
@@ -159,6 +182,7 @@ class FloorPlanViewModel @Inject constructor(
     }
 
     fun deleteFloor() {
+        FileLogger.log("FLOORPLAN_VM", "deleteFloor")
         val floor = _uiState.value.selectedFloor ?: return
         viewModelScope.launch {
             repository.deleteFloor(floor.id)
@@ -174,6 +198,7 @@ class FloorPlanViewModel @Inject constructor(
     }
 
     fun goBackToBuildings() {
+        FileLogger.log("FLOORPLAN_VM", "goBackToBuildings")
         _uiState.value = _uiState.value.copy(
             selectedBuilding = null,
             selectedFloor = null,
@@ -183,6 +208,7 @@ class FloorPlanViewModel @Inject constructor(
     }
 
     fun goBackToFloors() {
+        FileLogger.log("FLOORPLAN_VM", "goBackToFloors")
         _uiState.value = _uiState.value.copy(
             selectedFloor = null,
             waypoints = emptyList()

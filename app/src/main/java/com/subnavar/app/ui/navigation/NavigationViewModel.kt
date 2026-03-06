@@ -8,6 +8,7 @@ import com.subnavar.app.domain.model.Waypoint
 import com.subnavar.app.domain.model.WaypointType
 import com.subnavar.app.domain.repository.BuildingRepository
 import com.subnavar.app.nav.PathFinder
+import com.subnavar.app.util.FileLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,12 +53,15 @@ class NavigationViewModel @Inject constructor(
     private val pathFinder = PathFinder()
 
     init {
+        FileLogger.log("NAV_VM", "init")
         loadBuildings()
     }
 
     private fun loadBuildings() {
+        FileLogger.log("NAV_VM", "loadBuildings")
         viewModelScope.launch {
             repository.getAllBuildings().collect { buildings ->
+                FileLogger.log("NAV_VM", "loadBuildings: got ${buildings.size} buildings")
                 _uiState.value = _uiState.value.copy(buildings = buildings)
                 if (buildings.size == 1 && _uiState.value.selectedBuilding == null) {
                     selectBuilding(buildings.first())
@@ -67,6 +71,7 @@ class NavigationViewModel @Inject constructor(
     }
 
     fun selectBuilding(building: Building) {
+        FileLogger.log("NAV_VM", "selectBuilding: ${building.name}")
         _uiState.value = _uiState.value.copy(selectedBuilding = building)
         viewModelScope.launch {
             val floors = repository.getFloorsByBuilding(building.id).first()
@@ -80,6 +85,7 @@ class NavigationViewModel @Inject constructor(
     }
 
     fun setStartPointMode(mode: StartPointMode) {
+        FileLogger.log("NAV_VM", "setStartPointMode: $mode")
         _uiState.value = _uiState.value.copy(
             startPointMode = mode,
             searchQuery = "",
@@ -149,6 +155,7 @@ class NavigationViewModel @Inject constructor(
     }
 
     fun selectStartWaypoint(waypoint: Waypoint) {
+        FileLogger.log("NAV_VM", "selectStartWaypoint: ${waypoint.label} (id=${waypoint.id})")
         _uiState.value = _uiState.value.copy(
             startWaypoint = waypoint,
             isSelectingStart = false,
@@ -160,6 +167,7 @@ class NavigationViewModel @Inject constructor(
     }
 
     fun selectEndWaypoint(waypoint: Waypoint) {
+        FileLogger.log("NAV_VM", "selectEndWaypoint: ${waypoint.label} (id=${waypoint.id})")
         _uiState.value = _uiState.value.copy(
             endWaypoint = waypoint,
             pathResult = null
@@ -196,6 +204,7 @@ class NavigationViewModel @Inject constructor(
     }
 
     private fun calculatePath() {
+        FileLogger.log("NAV_VM", "calculatePath")
         val state = _uiState.value
         val start = state.startWaypoint ?: return
         val end = state.endWaypoint ?: return
@@ -206,13 +215,16 @@ class NavigationViewModel @Inject constructor(
             try {
                 val allWaypoints = repository.getWaypointsByBuilding(building.id)
                 val allEdges = repository.getEdgesByBuilding(building.id)
+                FileLogger.log("NAV_VM", "calculatePath: ${allWaypoints.size} waypoints, ${allEdges.size} edges")
                 val result = pathFinder.findPath(start, end, allWaypoints, allEdges)
+                FileLogger.log("NAV_VM", "calculatePath: result=${result != null}")
                 _uiState.value = _uiState.value.copy(
                     pathResult = result,
                     isCalculating = false,
                     errorMessage = if (result == null) "No path found between these waypoints" else null
                 )
             } catch (e: Exception) {
+                FileLogger.logError("NAV_VM", "calculatePath FAILED", e)
                 _uiState.value = _uiState.value.copy(
                     isCalculating = false,
                     errorMessage = "Error calculating path: ${e.message}"

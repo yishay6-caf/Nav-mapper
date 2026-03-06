@@ -9,6 +9,7 @@ import com.google.ar.core.Pose
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.UnavailableException
+import com.subnavar.app.util.FileLogger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -44,8 +45,10 @@ class ARSessionManager @Inject constructor(
     fun isARCoreSupported(): Boolean {
         return try {
             val availability = ArCoreApk.getInstance().checkAvailability(context)
+            FileLogger.log("AR_SESSION", "isARCoreSupported: availability=$availability, isSupported=${availability.isSupported}")
             availability.isSupported
         } catch (e: Exception) {
+            FileLogger.logError("AR_SESSION", "isARCoreSupported check failed", e)
             false
         }
     }
@@ -60,6 +63,7 @@ class ARSessionManager @Inject constructor(
     }
 
     fun createSession(activity: Activity): Boolean {
+        FileLogger.log("AR_SESSION", "createSession")
         return try {
             if (session == null) {
                 session = Session(activity)
@@ -77,6 +81,7 @@ class ARSessionManager @Inject constructor(
     }
 
     fun resumeSession() {
+        FileLogger.log("AR_SESSION", "resumeSession")
         session?.let {
             if (!isSessionResumed) {
                 it.resume()
@@ -86,6 +91,7 @@ class ARSessionManager @Inject constructor(
     }
 
     fun pauseSession() {
+        FileLogger.log("AR_SESSION", "pauseSession")
         session?.let {
             if (isSessionResumed) {
                 it.pause()
@@ -95,6 +101,7 @@ class ARSessionManager @Inject constructor(
     }
 
     fun destroySession() {
+        FileLogger.log("AR_SESSION", "destroySession")
         session?.close()
         session = null
         isSessionResumed = false

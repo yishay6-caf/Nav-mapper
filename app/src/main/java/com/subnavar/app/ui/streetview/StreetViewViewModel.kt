@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.subnavar.app.domain.model.Edge
 import com.subnavar.app.domain.model.Waypoint
 import com.subnavar.app.domain.repository.BuildingRepository
+import com.subnavar.app.util.FileLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,10 +37,12 @@ class StreetViewViewModel @Inject constructor(
     private val waypointId: Long = savedStateHandle.get<Long>("waypointId") ?: 0
 
     init {
+        FileLogger.log("STREETVIEW_VM", "init: waypointId=$waypointId")
         loadWaypoint(waypointId)
     }
 
     private fun loadWaypoint(id: Long) {
+        FileLogger.log("STREETVIEW_VM", "loadWaypoint: id=$id")
         viewModelScope.launch {
             val waypoint = repository.getWaypointById(id)
             if (waypoint != null) {
@@ -80,6 +83,7 @@ class StreetViewViewModel @Inject constructor(
     }
 
     fun navigateToWaypoint(waypoint: Waypoint) {
+        FileLogger.log("STREETVIEW_VM", "navigateToWaypoint: ${waypoint.label} (id=${waypoint.id})")
         _uiState.value = _uiState.value.copy(isLoading = true)
         loadWaypoint(waypoint.id)
     }
