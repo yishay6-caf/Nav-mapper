@@ -1,5 +1,6 @@
 package com.subnavar.app.ui.floorplan
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -72,6 +73,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import com.subnavar.app.domain.model.Building
@@ -91,6 +93,24 @@ fun FloorPlanScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    // Move launcher registration to top level so it has stable lifecycle
+    val floorPlanPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    it,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {
+                // Permission may already be granted or not persistable
+            }
+            viewModel.importFloorPlan(it)
+        }
+    }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
@@ -142,11 +162,6 @@ fun FloorPlanScreen(
             when {
                 uiState.selectedFloor != null -> {
                     Column(horizontalAlignment = Alignment.End) {
-                        val floorPlanPicker = rememberLauncherForActivityResult(
-                            ActivityResultContracts.OpenDocument()
-                        ) { uri: Uri? ->
-                            uri?.let { viewModel.importFloorPlan(it) }
-                        }
                         if (uiState.selectedFloor?.planImagePath == null) {
                             ExtendedFloatingActionButton(
                                 onClick = {
