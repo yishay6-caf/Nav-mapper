@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.subnavar.app.ar.session.ARSessionManager
+import com.subnavar.app.camera.CameraRecordingManager
 import com.subnavar.app.data.local.file.FileStorageManager
 import com.subnavar.app.domain.model.Edge
 import com.subnavar.app.domain.model.Floor
@@ -39,11 +40,15 @@ data class MappingUiState(
     val showFloorTransitionDialog: Boolean = false,
     val statusMessage: String = "",
     val waypointCount: Int = 0,
-    val viewMode: MappingViewMode = MappingViewMode.FLOOR_PLAN,
+    val viewMode: MappingViewMode = MappingViewMode.SPLIT,
     val isMarkingOnPlan: Boolean = false,
     val pendingPlanX: Float = 0f,
     val pendingPlanY: Float = 0f,
-    val hasFloorPlan: Boolean = false
+    val hasFloorPlan: Boolean = false,
+    val isRecording: Boolean = false,
+    val recordingDurationMs: Long = 0,
+    val recordedSegments: Int = 0,
+    val recordedSizeMb: String = "0.0"
 )
 
 @HiltViewModel
@@ -51,6 +56,7 @@ class MappingViewModel @Inject constructor(
     private val repository: BuildingRepository,
     private val arSessionManager: ARSessionManager,
     private val fileStorageManager: FileStorageManager,
+    val cameraRecordingManager: CameraRecordingManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -96,10 +102,63 @@ class MappingViewModel @Inject constructor(
 
     fun stopMapping() {
         FileLogger.log("MAPPING_VM", "stopMapping")
+        if (_uiState.value.isRecording) {
+            stopRecording()
+        }
         _uiState.value = _uiState.value.copy(
             isMappingActive = false,
             statusMessage = "Mapping paused"
         )
+    }
+
+    fun startRecording() {
+        FileLogger.log("MAPPING_VM", "startRecording")
+        cameraRecordingManager.startRecording(buildingId, floorId)
+        _uiState.value = _uiState.value.copy(
+            isRecording = true,
+            statusMessage = "Recording video..."
+        )
+        // Start polling recording state
+        viewModelScope.launch {
+            while (_uiState.value.isRecording) {
+                val state = cameraRecordingManager.getRecordingState()
+                _uiState.value = _uiState.value.copy(
+                    recordingDurationMs = state.durationMs,
+                    recordedSegments = state.segmentIndex
+                )
+                kotlinx.coroutines.delay(500)
+            }
+        }
+    }
+
+    fun stopRecording() {
+        FileLogger.log("MAPPING_VM", "stopRecording")
+        cameraRecordingManager.stopRecording()
+        val sizeMb = cameraRecordingManager.getTotalRecordedSize(buildingId, floorId) / (1024.0 * 1024.0)
+        _uiState.value = _uiState.value.copy(
+            isRecording = false,
+            recordedSizeMb = "%.1f".format(sizeMb),
+            statusMessage = "Recording saved (%.1f MB)".format(sizeMb)
+        )
+    }
+
+    fun toggleRecording() {
+        if (_uiState.value.isRecording) stopRecording() else startRecording()
+    }
+
+    fun capturePhoto() {
+        FileLogger.log("MAPPING_VM", "capturePhoto")
+        cameraRecordingManager.capturePhoto(buildingId, floorId) { photoFile ->
+            if (photoFile != null) {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "Photo saved: ${photoFile.name}"
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "Photo capture failed"
+                )
+            }
+        }
     }
 
     fun updateTrackingState(isTracking: Boolean, x: Float, y: Float, z: Float) {
@@ -151,7 +210,7 @@ class MappingViewModel @Inject constructor(
 
             // Save captured photo if available
             if (capturedBitmap != null) {
-                val photoPath = fileStorageManager.saveWaypointPhoto(
+                fileStorageManager.saveWaypointPhoto(
                     buildingId, floorId, waypointId, capturedBitmap, 0
                 )
                 fileStorageManager.saveThumbnail(buildingId, floorId, waypointId, capturedBitmap)
@@ -282,6 +341,20 @@ class MappingViewModel @Inject constructor(
             pendingPlanX = 0f,
             pendingPlanY = 0f
         )
+    }
+
+    fun relocateWaypoint(waypointId: Long, planX: Float, planY: Float) {
+        FileLogger.log("MAPPING_VM", "relocateWaypoint: id=$waypointId, planX=$planX, planY=$planY")
+        viewModelScope.launch {
+            val waypoint = repository.getWaypointById(waypointId)
+            if (waypoint != null) {
+                val updated = waypoint.copy(planX = planX, planY = planY)
+                repository.updateWaypoint(updated)
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "Waypoint relocated: ${waypoint.label ?: "WP-${waypointId}"}"
+                )
+            }
+        }
     }
 
     fun placeWaypointAtMark(

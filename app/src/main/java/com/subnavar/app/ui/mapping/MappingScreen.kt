@@ -34,9 +34,12 @@ import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stairs
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Splitscreen
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.DropdownMenuItem
@@ -77,10 +80,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import com.subnavar.app.domain.model.Waypoint
 import com.subnavar.app.domain.model.WaypointType
+import com.subnavar.app.util.LocaleManager
+import com.subnavar.app.util.Strings
+import com.subnavar.app.util.Strings.get
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -91,6 +98,8 @@ fun MappingScreen(
     onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     var hasCameraPermission by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -109,11 +118,11 @@ fun MappingScreen(
                 title = {
                     Column {
                         Text(
-                            "Mapping: ${uiState.floor?.name ?: ""}",
+                            "${Strings.mappingTitle.get(lang)}: ${uiState.floor?.name ?: ""}",
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            "${uiState.waypointCount} waypoints placed",
+                            "${uiState.waypointCount} ${Strings.waypointsPlacedCount.get(lang)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
@@ -121,7 +130,7 @@ fun MappingScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, Strings.back.get(lang))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -132,7 +141,7 @@ fun MappingScreen(
                     IconButton(onClick = { viewModel.setViewMode(MappingViewMode.FLOOR_PLAN) }) {
                         Icon(
                             Icons.Default.Map,
-                            "Floor Plan",
+                            Strings.floorPlanMode.get(lang),
                             tint = if (uiState.viewMode == MappingViewMode.FLOOR_PLAN)
                                 MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -141,7 +150,7 @@ fun MappingScreen(
                     IconButton(onClick = { viewModel.setViewMode(MappingViewMode.CAMERA) }) {
                         Icon(
                             Icons.Default.CameraAlt,
-                            "Camera",
+                            Strings.cameraMode.get(lang),
                             tint = if (uiState.viewMode == MappingViewMode.CAMERA)
                                 MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -150,7 +159,7 @@ fun MappingScreen(
                     IconButton(onClick = { viewModel.setViewMode(MappingViewMode.SPLIT) }) {
                         Icon(
                             Icons.Default.Splitscreen,
-                            "Split",
+                            Strings.splitMode.get(lang),
                             tint = if (uiState.viewMode == MappingViewMode.SPLIT)
                                 MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -183,7 +192,7 @@ fun MappingScreen(
                             contentDescription = null
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text(if (uiState.isMappingActive) "Pause" else "Start")
+                        Text(if (uiState.isMappingActive) Strings.pause.get(lang) else Strings.start.get(lang))
                     }
 
                     // Place waypoint
@@ -196,7 +205,33 @@ fun MappingScreen(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
-                        Text(if (uiState.isMarkingOnPlan) "Place Here" else "Waypoint")
+                        Text(if (uiState.isMarkingOnPlan) Strings.placeHere.get(lang) else Strings.waypoint.get(lang))
+                    }
+
+                    // Take photo
+                    FilledTonalButton(
+                        onClick = { viewModel.capturePhoto() }
+                    ) {
+                        Icon(
+                            Icons.Default.PhotoCamera,
+                            contentDescription = null
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(Strings.photo.get(lang))
+                    }
+
+                    // Record video
+                    FilledTonalButton(
+                        onClick = { viewModel.toggleRecording() }
+                    ) {
+                        Icon(
+                            if (uiState.isRecording) Icons.Default.Stop
+                            else Icons.Default.Videocam,
+                            contentDescription = null,
+                            tint = if (uiState.isRecording) Color.Red else MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(if (uiState.isRecording) Strings.stop.get(lang) else Strings.record.get(lang))
                     }
 
                     // Floor transition
@@ -205,7 +240,7 @@ fun MappingScreen(
                     ) {
                         Icon(Icons.Default.Stairs, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
-                        Text("Transition")
+                        Text(Strings.transitionButton.get(lang))
                     }
                 }
             }
@@ -231,39 +266,73 @@ fun MappingScreen(
                     )
                 }
                 MappingViewMode.CAMERA -> {
-                    // Camera view (AR)
-                    CameraMappingView(
-                        hasCameraPermission = hasCameraPermission,
-                        isTracking = uiState.isTracking,
-                        statusMessage = uiState.statusMessage,
-                        currentPositionX = uiState.currentPositionX,
-                        currentPositionY = uiState.currentPositionY,
-                        currentPositionZ = uiState.currentPositionZ
-                    )
+                    // Full camera view with live feed
+                    if (hasCameraPermission) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            CameraPreviewView(
+                                cameraRecordingManager = viewModel.cameraRecordingManager,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            // Recording controls overlay
+                            CameraOverlayControls(
+                                isRecording = uiState.isRecording,
+                                recordingDurationMs = uiState.recordingDurationMs,
+                                statusMessage = uiState.statusMessage,
+                                onToggleRecording = { viewModel.toggleRecording() },
+                                modifier = Modifier.align(Alignment.TopCenter)
+                            )
+                        }
+                    } else {
+                        CameraMappingView(
+                            hasCameraPermission = false,
+                            isTracking = uiState.isTracking,
+                            statusMessage = uiState.statusMessage,
+                            currentPositionX = uiState.currentPositionX,
+                            currentPositionY = uiState.currentPositionY,
+                            currentPositionZ = uiState.currentPositionZ
+                        )
+                    }
                 }
                 MappingViewMode.SPLIT -> {
-                    // Split view: floor plan on top, camera on bottom
+                    // Split view: live camera on top, 3D floor plan on bottom
                     Column(modifier = Modifier.fillMaxSize()) {
+                        // Top: Live camera feed
                         Box(modifier = Modifier.weight(1f)) {
-                            FloorPlanMappingView(
+                            if (hasCameraPermission) {
+                                CameraPreviewView(
+                                    cameraRecordingManager = viewModel.cameraRecordingManager,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                // Recording controls overlay
+                                CameraOverlayControls(
+                                    isRecording = uiState.isRecording,
+                                    recordingDurationMs = uiState.recordingDurationMs,
+                                    statusMessage = uiState.statusMessage,
+                                    onToggleRecording = { viewModel.toggleRecording() },
+                                    modifier = Modifier.align(Alignment.TopCenter)
+                                )
+                            } else {
+                                CameraMappingView(
+                                    hasCameraPermission = false,
+                                    isTracking = uiState.isTracking,
+                                    statusMessage = uiState.statusMessage,
+                                    currentPositionX = uiState.currentPositionX,
+                                    currentPositionY = uiState.currentPositionY,
+                                    currentPositionZ = uiState.currentPositionZ
+                                )
+                            }
+                        }
+                        // Bottom: 3D floor plan view with tap-to-mark
+                        Box(modifier = Modifier.weight(1f)) {
+                            FloorPlan3DView(
                                 floor = uiState.floor,
                                 waypoints = uiState.waypoints,
                                 isMarkingOnPlan = uiState.isMarkingOnPlan,
                                 pendingPlanX = uiState.pendingPlanX,
                                 pendingPlanY = uiState.pendingPlanY,
-                                statusMessage = uiState.statusMessage,
                                 onTapOnPlan = { x, y -> viewModel.markLocationOnPlan(x, y) },
-                                onClearMark = { viewModel.clearPlanMark() }
-                            )
-                        }
-                        Box(modifier = Modifier.weight(1f)) {
-                            CameraMappingView(
-                                hasCameraPermission = hasCameraPermission,
-                                isTracking = uiState.isTracking,
-                                statusMessage = uiState.statusMessage,
-                                currentPositionX = uiState.currentPositionX,
-                                currentPositionY = uiState.currentPositionY,
-                                currentPositionZ = uiState.currentPositionZ
+                                onWaypointRelocate = { id, x, y -> viewModel.relocateWaypoint(id, x, y) },
+                                lang = lang
                             )
                         }
                     }
@@ -325,7 +394,8 @@ private fun FloorPlanMappingView(
     pendingPlanY: Float,
     statusMessage: String,
     onTapOnPlan: (Float, Float) -> Unit,
-    onClearMark: () -> Unit
+    onClearMark: () -> Unit,
+    lang: LocaleManager.AppLanguage = LocaleManager.AppLanguage.ENGLISH
 ) {
     val planPath = floor?.planImagePath
     if (planPath != null && File(planPath).exists()) {
@@ -424,8 +494,8 @@ private fun FloorPlanMappingView(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (isMarkingOnPlan) "Location marked! Tap 'Place Here' to add waypoint"
-                    else "Tap on the floor plan to mark your location",
+                    text = if (isMarkingOnPlan) Strings.locationMarkedTapPlace.get(lang)
+                    else Strings.tapOnFloorPlanToMark.get(lang),
                     color = Color.White,
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
@@ -452,7 +522,7 @@ private fun FloorPlanMappingView(
                             CircleShape
                         )
                 ) {
-                    Icon(Icons.Default.Close, "Clear mark", tint = Color.White)
+                    Icon(Icons.Default.Close, Strings.clearMark.get(lang), tint = Color.White)
                 }
             }
         }
@@ -471,7 +541,7 @@ private fun FloorPlanMappingView(
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = "No floor plan imported yet.\nImport a floor plan in the Map tab\nto use blueprint-based mapping.",
+                    text = Strings.noFloorPlanImportedMapping.get(lang),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -488,14 +558,15 @@ private fun CameraMappingView(
     statusMessage: String,
     currentPositionX: Float,
     currentPositionY: Float,
-    currentPositionZ: Float
+    currentPositionZ: Float,
+    lang: LocaleManager.AppLanguage = LocaleManager.AppLanguage.ENGLISH
 ) {
     if (!hasCameraPermission) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("Camera permission is required for AR mapping")
+            Text(Strings.cameraPermissionRequired.get(lang))
         }
     } else {
         Box(
@@ -523,7 +594,7 @@ private fun CameraMappingView(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (isTracking) "Tracking" else "Not Tracking",
+                        text = if (isTracking) Strings.tracking.get(lang) else Strings.notTracking.get(lang),
                         color = Color.White,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -550,7 +621,7 @@ private fun CameraMappingView(
                     .padding(8.dp)
             ) {
                 Text(
-                    "Position",
+                    Strings.position.get(lang),
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold
@@ -625,7 +696,8 @@ private fun PlaceWaypointDialog(
     onConfirm: (String?, WaypointType) -> Unit,
     isMarkingOnPlan: Boolean = false,
     planX: Float = 0f,
-    planY: Float = 0f
+    planY: Float = 0f,
+    lang: LocaleManager.AppLanguage = LocaleManager.AppLanguage.ENGLISH
 ) {
     var label by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(WaypointType.HALLWAY) }
@@ -633,7 +705,7 @@ private fun PlaceWaypointDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isMarkingOnPlan) "Place Waypoint on Plan" else "Place Waypoint") },
+        title = { Text(if (isMarkingOnPlan) Strings.placeWaypointOnPlan.get(lang) else Strings.placeWaypointTitle.get(lang)) },
         text = {
             Column {
                 if (isMarkingOnPlan) {
@@ -647,7 +719,7 @@ private fun PlaceWaypointDialog(
                 OutlinedTextField(
                     value = label,
                     onValueChange = { label = it },
-                    label = { Text("Label (optional)") },
+                    label = { Text(Strings.labelOptional.get(lang)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -660,7 +732,7 @@ private fun PlaceWaypointDialog(
                         value = selectedType.name,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Type") },
+                        label = { Text(Strings.typeLabel.get(lang)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
@@ -684,18 +756,66 @@ private fun PlaceWaypointDialog(
         confirmButton = {
             TextButton(onClick = {
                 onConfirm(label.ifBlank { null }, selectedType)
-            }) { Text("Place") }
+            }) { Text(Strings.placeButton.get(lang)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(Strings.cancelButton.get(lang)) }
         }
     )
 }
 
 @Composable
+private fun CameraOverlayControls(
+    isRecording: Boolean,
+    recordingDurationMs: Long,
+    statusMessage: String,
+    onToggleRecording: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .padding(12.dp)
+            .background(
+                Color.Black.copy(alpha = 0.6f),
+                RoundedCornerShape(8.dp)
+            )
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (isRecording) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.FiberManualRecord,
+                    contentDescription = null,
+                    tint = Color.Red,
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                val seconds = (recordingDurationMs / 1000) % 60
+                val minutes = (recordingDurationMs / 1000) / 60
+                Text(
+                    text = "REC %02d:%02d".format(minutes, seconds),
+                    color = Color.Red,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        if (statusMessage.isNotBlank()) {
+            Text(
+                text = statusMessage,
+                color = Color.White.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
+@Composable
 private fun FloorTransitionDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String?, WaypointType, Long) -> Unit
+    onConfirm: (String?, WaypointType, Long) -> Unit,
+    lang: LocaleManager.AppLanguage = LocaleManager.AppLanguage.ENGLISH
 ) {
     var label by remember { mutableStateOf("") }
     var isElevator by remember { mutableStateOf(false) }
@@ -703,13 +823,13 @@ private fun FloorTransitionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Floor Transition") },
+        title = { Text(Strings.floorTransitionTitle.get(lang)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = label,
                     onValueChange = { label = it },
-                    label = { Text("Label (e.g., Stairwell A)") },
+                    label = { Text(Strings.labelStairwell.get(lang)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -721,7 +841,7 @@ private fun FloorTransitionDialog(
                     ) {
                         Icon(Icons.Default.Stairs, null)
                         Spacer(Modifier.width(4.dp))
-                        Text("Stairs")
+                        Text(Strings.stairsButton.get(lang))
                     }
                     Spacer(Modifier.width(8.dp))
                     FilledTonalButton(
@@ -730,14 +850,14 @@ private fun FloorTransitionDialog(
                     ) {
                         Icon(Icons.Default.Elevator, null)
                         Spacer(Modifier.width(4.dp))
-                        Text("Elevator")
+                        Text(Strings.elevatorButton.get(lang))
                     }
                 }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = connectedFloorId,
                     onValueChange = { connectedFloorId = it },
-                    label = { Text("Connected Floor ID") },
+                    label = { Text(Strings.connectedFloorIdLabel.get(lang)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
@@ -752,10 +872,10 @@ private fun FloorTransitionDialog(
                     if (isElevator) WaypointType.ELEVATOR else WaypointType.STAIRWELL,
                     floorId
                 )
-            }) { Text("Place") }
+            }) { Text(Strings.placeButton.get(lang)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(Strings.cancelButton.get(lang)) }
         }
     )
 }

@@ -1,7 +1,10 @@
 package com.subnavar.app.ui.navigation
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.subnavar.app.ar.relocalization.RelocalizationEngine
+import com.subnavar.app.camera.CameraRecordingManager
 import com.subnavar.app.domain.model.Building
 import com.subnavar.app.domain.model.Floor
 import com.subnavar.app.domain.model.Waypoint
@@ -10,6 +13,7 @@ import com.subnavar.app.domain.repository.BuildingRepository
 import com.subnavar.app.nav.PathFinder
 import com.subnavar.app.util.FileLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,7 +48,9 @@ data class NavigationUiState(
 
 @HiltViewModel
 class NavigationViewModel @Inject constructor(
-    private val repository: BuildingRepository
+    private val repository: BuildingRepository,
+    val cameraRecordingManager: CameraRecordingManager,
+    private val relocalizationEngine: RelocalizationEngine
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NavigationUiState())
@@ -128,18 +134,81 @@ class NavigationViewModel @Inject constructor(
         )
     }
 
+    private var analysisJob: Job? = null
+    private var lastAnalysisTimeMs: Long = 0
+    private val analysisCooldownMs: Long = 2000 // Analyze every 2 seconds
+
     fun startArLocating() {
+        FileLogger.log("NAV_VM", "startArLocating")
         _uiState.value = _uiState.value.copy(
             isArLocating = true,
-            arLocateMessage = "Point your camera at your surroundings to detect your location..."
+            arLocateMessage = "Starting camera... Point at a mapped area."
         )
+        // Pre-load features for the selected building's floors
+        val building = _uiState.value.selectedBuilding ?: return
+        analysisJob = viewModelScope.launch {
+            try {
+                val floors = repository.getFloorsByBuilding(building.id).first()
+                for (floor in floors) {
+                    relocalizationEngine.loadFloorFeatures(building.id, floor.id)
+                }
+                _uiState.value = _uiState.value.copy(
+                    arLocateMessage = "Scanning... Point your camera at your surroundings."
+                )
+                FileLogger.log("NAV_VM", "Floor features loaded for building ${building.id}")
+            } catch (e: Exception) {
+                FileLogger.logError("NAV_VM", "Failed to load floor features", e)
+                _uiState.value = _uiState.value.copy(
+                    arLocateMessage = "Error loading mapping data: ${e.message}"
+                )
+            }
+        }
     }
 
     fun stopArLocating() {
+        FileLogger.log("NAV_VM", "stopArLocating")
+        analysisJob?.cancel()
+        analysisJob = null
+        cameraRecordingManager.unbindCamera()
+        relocalizationEngine.clearCache()
         _uiState.value = _uiState.value.copy(
             isArLocating = false,
             arLocateMessage = ""
         )
+    }
+
+    /**
+     * Process a camera frame for ORB feature matching.
+     * Called from the CameraX ImageAnalysis callback.
+     */
+    fun processFrame(bitmap: Bitmap) {
+        val now = System.currentTimeMillis()
+        if (now - lastAnalysisTimeMs < analysisCooldownMs) return
+        if (!_uiState.value.isArLocating) return
+        lastAnalysisTimeMs = now
+
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(
+                    arLocateMessage = "Analyzing frame..."
+                )
+                val result = relocalizationEngine.localize(bitmap)
+                if (result != null) {
+                    FileLogger.log("NAV_VM", "Localized! waypoint=${result.waypoint.label}, confidence=${result.confidence}")
+                    _uiState.value = _uiState.value.copy(
+                        arLocateMessage = "Found: ${result.waypoint.label ?: "WP-${result.waypoint.id}"} (${(result.confidence * 100).toInt()}% match)"
+                    )
+                    // Auto-select the located waypoint
+                    setArLocatedWaypoint(result.waypoint)
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        arLocateMessage = "No match yet. Keep scanning..."
+                    )
+                }
+            } catch (e: Exception) {
+                FileLogger.logError("NAV_VM", "Frame analysis failed", e)
+            }
+        }
     }
 
     fun setArLocatedWaypoint(waypoint: Waypoint) {

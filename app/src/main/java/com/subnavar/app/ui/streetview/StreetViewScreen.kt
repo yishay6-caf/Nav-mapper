@@ -40,7 +40,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -54,6 +56,9 @@ import coil.compose.rememberAsyncImagePainter
 import com.subnavar.app.domain.model.Waypoint
 import com.subnavar.app.domain.model.WaypointType
 import com.subnavar.app.ui.common.LoadingIndicator
+import com.subnavar.app.util.LocaleManager
+import com.subnavar.app.util.Strings
+import com.subnavar.app.util.Strings.get
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,6 +68,8 @@ fun StreetViewScreen(
     onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
 
     Scaffold(
         topBar = {
@@ -70,7 +77,7 @@ fun StreetViewScreen(
                 title = {
                     Column {
                         Text(
-                            uiState.currentWaypoint?.label ?: "Street View",
+                            uiState.currentWaypoint?.label ?: Strings.streetView.get(lang),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
@@ -82,7 +89,7 @@ fun StreetViewScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, Strings.back.get(lang))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -109,7 +116,7 @@ fun StreetViewScreen(
                     if (uiState.photoPath != null) {
                         Image(
                             painter = rememberAsyncImagePainter(File(uiState.photoPath!!)),
-                            contentDescription = "Waypoint Photo",
+                            contentDescription = Strings.waypointPhoto.get(lang),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Fit
                         )
@@ -133,8 +140,8 @@ fun StreetViewScreen(
                                         )
                                 ) {
                                     Icon(
-                                        Icons.AutoMirrored.Filled.NavigateBefore,
-                                        "Previous",
+                                            Icons.AutoMirrored.Filled.NavigateBefore,
+                                            Strings.previous.get(lang),
                                         tint = Color.White
                                     )
                                 }
@@ -148,8 +155,8 @@ fun StreetViewScreen(
                                         )
                                 ) {
                                     Icon(
-                                        Icons.AutoMirrored.Filled.ArrowForward,
-                                        "Next",
+                                            Icons.AutoMirrored.Filled.ArrowForward,
+                                            Strings.next.get(lang),
                                         tint = Color.White
                                     )
                                 }
@@ -185,7 +192,7 @@ fun StreetViewScreen(
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                "No photos captured for this waypoint",
+                                Strings.noPhotosCaptured.get(lang),
                                 color = Color.White.copy(alpha = 0.6f),
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center
@@ -232,7 +239,7 @@ fun StreetViewScreen(
                             .padding(12.dp)
                     ) {
                         Text(
-                            "Navigate to:",
+                            Strings.navigateToLabel.get(lang),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             modifier = Modifier.padding(bottom = 8.dp)

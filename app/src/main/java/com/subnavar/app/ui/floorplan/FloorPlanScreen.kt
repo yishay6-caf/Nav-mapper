@@ -82,6 +82,9 @@ import com.subnavar.app.domain.model.Waypoint
 import com.subnavar.app.ui.common.EmptyStateMessage
 import com.subnavar.app.ui.common.LoadingIndicator
 import com.subnavar.app.util.FileLogger
+import com.subnavar.app.util.LocaleManager
+import com.subnavar.app.util.Strings
+import com.subnavar.app.util.Strings.get
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -95,6 +98,7 @@ fun FloorPlanScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
 
     // Move launcher registration to top level so it has stable lifecycle
     val floorPlanPicker = rememberLauncherForActivityResult(
@@ -131,7 +135,7 @@ fun FloorPlanScreen(
                         when {
                             uiState.selectedFloor != null -> uiState.selectedFloor!!.name
                             uiState.selectedBuilding != null -> uiState.selectedBuilding!!.name
-                            else -> "Lot25 Map"
+                            else -> Strings.lot25Map.get(lang)
                         }
                     )
                 },
@@ -141,7 +145,7 @@ fun FloorPlanScreen(
                             if (uiState.selectedFloor != null) viewModel.goBackToFloors()
                             else viewModel.goBackToBuildings()
                         }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, Strings.back.get(lang))
                         }
                     }
                 },
@@ -151,11 +155,11 @@ fun FloorPlanScreen(
                 actions = {
                     if (uiState.selectedFloor != null) {
                         IconButton(onClick = { viewModel.deleteFloor() }) {
-                            Icon(Icons.Default.Delete, "Delete Floor")
+                            Icon(Icons.Default.Delete, Strings.deleteFloor.get(lang))
                         }
                     } else if (uiState.selectedBuilding != null) {
                         IconButton(onClick = { viewModel.deleteBuilding() }) {
-                            Icon(Icons.Default.Delete, "Delete Building")
+                            Icon(Icons.Default.Delete, Strings.deleteBuildingAction.get(lang))
                         }
                     }
                 }
@@ -181,8 +185,8 @@ fun FloorPlanScreen(
                                         FileLogger.logError("FLOORPLAN_SCREEN", "floorPlanPicker.launch() CRASHED", e)
                                     }
                                 },
-                                icon = { Icon(Icons.Default.Upload, "Import") },
-                                text = { Text("Import Plan") }
+                                icon = { Icon(Icons.Default.Upload, Strings.importPlanButton.get(lang)) },
+                                text = { Text(Strings.importPlanButton.get(lang)) }
                             )
                         } else {
                             FloatingActionButton(
@@ -192,19 +196,19 @@ fun FloorPlanScreen(
                                     onNavigateToMapping(building.id, floor.id)
                                 }
                             ) {
-                                Icon(Icons.Default.LocationOn, "Map")
+                                Icon(Icons.Default.LocationOn, Strings.mapButton.get(lang))
                             }
                         }
                     }
                 }
                 uiState.selectedBuilding != null -> {
                     FloatingActionButton(onClick = { viewModel.showAddFloorDialog() }) {
-                        Icon(Icons.Default.Add, "Add Floor")
+                        Icon(Icons.Default.Add, Strings.addFloorButton.get(lang))
                     }
                 }
                 else -> {
                     FloatingActionButton(onClick = { viewModel.showAddBuildingDialog() }) {
-                        Icon(Icons.Default.Add, "Add Building")
+                        Icon(Icons.Default.Add, Strings.addBuildingButton.get(lang))
                     }
                 }
             }
@@ -252,10 +256,12 @@ private fun BuildingListView(
     buildings: List<Building>,
     onBuildingClick: (Building) -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     if (buildings.isEmpty()) {
         EmptyStateMessage(
             icon = Icons.Default.Apartment,
-            message = "No buildings yet.\nTap + to add one."
+            message = Strings.noBuildingsYet.get(lang)
         )
     } else {
         LazyColumn(
@@ -306,10 +312,12 @@ private fun FloorListView(
     floors: List<Floor>,
     onFloorClick: (Floor) -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     if (floors.isEmpty()) {
         EmptyStateMessage(
             icon = Icons.Default.Layers,
-            message = "No floors yet.\nTap + to add a floor."
+            message = Strings.noFloorsYet.get(lang)
         )
     } else {
         LazyColumn(
@@ -348,7 +356,7 @@ private fun FloorListView(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = if (floor.planImagePath != null) "Floor plan imported" else "No floor plan",
+                                text = if (floor.planImagePath != null) Strings.floorPlanImportedStatus.get(lang) else Strings.noFloorPlanStatus.get(lang),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (floor.planImagePath != null)
                                     MaterialTheme.colorScheme.primary
@@ -369,6 +377,8 @@ private fun FloorDetailView(
     waypoints: List<Waypoint>,
     onWaypointClick: (Waypoint) -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     if (floor.planImagePath != null && File(floor.planImagePath).exists()) {
         InteractiveFloorPlan(
             planImagePath = floor.planImagePath,
@@ -378,7 +388,7 @@ private fun FloorDetailView(
     } else {
         EmptyStateMessage(
             icon = Icons.Default.Map,
-            message = "No floor plan imported yet.\nTap the upload button to import one."
+            message = Strings.noFloorPlanImported.get(lang)
         )
     }
 }
@@ -475,18 +485,20 @@ private fun AddBuildingDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, String?) -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Building") },
+        title = { Text(Strings.addBuildingTitle.get(lang)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Building Name") },
+                    label = { Text(Strings.buildingNameLabel.get(lang)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -494,7 +506,7 @@ private fun AddBuildingDialog(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description (optional)") },
+                    label = { Text(Strings.descriptionOptional.get(lang)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -503,10 +515,10 @@ private fun AddBuildingDialog(
             TextButton(
                 onClick = { onConfirm(name, description.ifBlank { null }) },
                 enabled = name.isNotBlank()
-            ) { Text("Add") }
+            ) { Text(Strings.addButton.get(lang)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(Strings.cancelButton.get(lang)) }
         }
     )
 }
@@ -516,18 +528,20 @@ private fun AddFloorDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, Int) -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     var name by remember { mutableStateOf("") }
     var level by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Floor") },
+        title = { Text(Strings.addFloorTitle.get(lang)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Floor Name (e.g., B1, B2)") },
+                    label = { Text(Strings.floorNameLabel.get(lang)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -535,7 +549,7 @@ private fun AddFloorDialog(
                 OutlinedTextField(
                     value = level,
                     onValueChange = { level = it },
-                    label = { Text("Level Number (e.g., -1, -2)") },
+                    label = { Text(Strings.floorLevelLabel.get(lang)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
@@ -549,10 +563,10 @@ private fun AddFloorDialog(
                     onConfirm(name, levelInt)
                 },
                 enabled = name.isNotBlank()
-            ) { Text("Add") }
+            ) { Text(Strings.addButton.get(lang)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(Strings.cancelButton.get(lang)) }
         }
     )
 }

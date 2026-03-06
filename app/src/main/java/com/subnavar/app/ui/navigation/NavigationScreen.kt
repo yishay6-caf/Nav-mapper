@@ -1,5 +1,8 @@
 package com.subnavar.app.ui.navigation
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -51,25 +54,35 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.camera.view.PreviewView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.subnavar.app.domain.model.Waypoint
 import com.subnavar.app.nav.PathFinder
 import com.subnavar.app.ui.common.EmptyStateMessage
 import com.subnavar.app.ui.common.LoadingIndicator
+import com.subnavar.app.util.LocaleManager
+import com.subnavar.app.util.Strings
+import com.subnavar.app.util.Strings.get
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +92,8 @@ fun NavigationScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
@@ -91,14 +106,14 @@ fun NavigationScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Navigate") },
+                title = { Text(Strings.navigateTitle.get(lang)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
                 actions = {
                     if (uiState.startWaypoint != null || uiState.endWaypoint != null) {
                         IconButton(onClick = { viewModel.resetNavigation() }) {
-                            Icon(Icons.Default.Close, "Reset")
+                            Icon(Icons.Default.Close, Strings.reset.get(lang))
                         }
                     }
                 }
@@ -128,10 +143,10 @@ fun NavigationScreen(
             } else if (uiState.isCalculating) {
                 LoadingIndicator()
             } else if (uiState.isSelectingStart || uiState.endWaypoint == null) {
-                val selectingLabel = if (uiState.isSelectingStart)
-                    "Choose how to set your starting point:"
-                else
-                    "Choose how to set your destination:"
+                    val selectingLabel = if (uiState.isSelectingStart)
+                        Strings.chooseStartPoint.get(lang)
+                    else
+                        Strings.chooseDestination.get(lang)
 
                 Text(
                     text = selectingLabel,
@@ -161,6 +176,7 @@ fun NavigationScreen(
                         }
                     )
                     StartPointMode.CAMERA_AR -> CameraArModeContent(
+                        viewModel = viewModel,
                         isLocating = uiState.isArLocating,
                         message = uiState.arLocateMessage,
                         onStartLocating = { viewModel.startArLocating() },
@@ -188,6 +204,8 @@ private fun StartPointModeSelector(
     selectedMode: StartPointMode,
     onModeSelected: (StartPointMode) -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -196,21 +214,21 @@ private fun StartPointModeSelector(
     ) {
         ModeTab(
             icon = Icons.Default.Search,
-            label = "Search",
+            label = Strings.searchTab.get(lang),
             isSelected = selectedMode == StartPointMode.SEARCH,
             onClick = { onModeSelected(StartPointMode.SEARCH) },
             modifier = Modifier.weight(1f)
         )
         ModeTab(
             icon = Icons.Default.CameraAlt,
-            label = "Camera",
+            label = Strings.cameraTab.get(lang),
             isSelected = selectedMode == StartPointMode.CAMERA_AR,
             onClick = { onModeSelected(StartPointMode.CAMERA_AR) },
             modifier = Modifier.weight(1f)
         )
         ModeTab(
             icon = Icons.Default.MeetingRoom,
-            label = "Room #",
+            label = Strings.roomTab.get(lang),
             isSelected = selectedMode == StartPointMode.ROOM_NUMBER,
             onClick = { onModeSelected(StartPointMode.ROOM_NUMBER) },
             modifier = Modifier.weight(1f)
@@ -259,6 +277,8 @@ private fun SearchModeContent(
     endWaypointId: Long?,
     onWaypointSelected: (Waypoint) -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     Column {
         OutlinedTextField(
             value = searchQuery,
@@ -266,12 +286,12 @@ private fun SearchModeContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            placeholder = { Text("Search waypoints by name or type...") },
+            placeholder = { Text(Strings.searchWaypointsPlaceholder.get(lang)) },
             leadingIcon = { Icon(Icons.Default.Search, null) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { onQueryChange("") }) {
-                        Icon(Icons.Default.Close, "Clear")
+                        Icon(Icons.Default.Close, Strings.clear.get(lang))
                     }
                 }
             },
@@ -297,9 +317,9 @@ private fun SearchModeContent(
             EmptyStateMessage(
                 icon = Icons.Default.Navigation,
                 message = if (searchQuery.isNotEmpty())
-                    "No waypoints match your search."
+                    Strings.noWaypointsMatch.get(lang)
                 else
-                    "No waypoints mapped yet.\nMap a building first to navigate."
+                    Strings.noWaypointsMappedNav.get(lang)
             )
         }
     }
@@ -307,76 +327,155 @@ private fun SearchModeContent(
 
 @Composable
 private fun CameraArModeContent(
+    viewModel: NavigationViewModel,
     isLocating: Boolean,
     message: String,
     onStartLocating: () -> Unit,
     onStopLocating: () -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
+    var hasCameraPermission by remember { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
+        if (isLocating && hasCameraPermission) {
+            // Show live camera preview with analysis overlay
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .height(300.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(
-                    Icons.Default.CameraAlt,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "AR Location Detection",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = if (isLocating) message
-                    else "Use your camera to detect your current location by matching visual features against mapped waypoints.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-                Spacer(Modifier.height(20.dp))
-                if (isLocating) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp),
-                        color = MaterialTheme.colorScheme.primary
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Live CameraX preview with frame analysis
+                    val context = LocalContext.current
+                    val lifecycleOwner = LocalLifecycleOwner.current
+                    val previewView = remember {
+                        PreviewView(context).apply {
+                            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                        }
+                    }
+
+                    DisposableEffect(lifecycleOwner) {
+                        viewModel.cameraRecordingManager.bindCameraForAnalysis(
+                            lifecycleOwner,
+                            previewView
+                        ) { bitmap ->
+                            viewModel.processFrame(bitmap)
+                        }
+                        onDispose {
+                            viewModel.cameraRecordingManager.unbindCamera()
+                        }
+                    }
+
+                    AndroidView(
+                        factory = { previewView },
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    // Status overlay on top of camera
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(8.dp)
+                            .background(
+                                Color.Black.copy(alpha = 0.6f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = message,
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+
+                    // Cancel button at bottom
+                    OutlinedButton(
+                        onClick = onStopLocating,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(8.dp)
+                    ) {
+                        Text(Strings.cancelButton.get(lang), color = Color.White)
+                    }
+                }
+            }
+        } else {
+            // Start scan card (not yet locating)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.height(16.dp))
-                    OutlinedButton(onClick = onStopLocating) {
-                        Text("Cancel")
-                    }
-                } else {
+                    Text(
+                        text = Strings.arLocationDetection.get(lang),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = Strings.arLocationDesc.get(lang),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    Spacer(Modifier.height(20.dp))
                     Button(
-                        onClick = onStartLocating,
+                        onClick = {
+                            if (!hasCameraPermission) {
+                                permissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                            onStartLocating()
+                        },
                         modifier = Modifier.fillMaxWidth(0.7f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.CameraAlt, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Start Camera Scan")
+                        Text(Strings.startCameraScan.get(lang))
                     }
                 }
             }
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "Requires mapped waypoints with photos",
+            text = Strings.requiresMappedWaypoints.get(lang),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
         )
@@ -392,6 +491,8 @@ private fun RoomNumberModeContent(
     endWaypointId: Long?,
     onWaypointSelected: (Waypoint) -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     Column {
         OutlinedTextField(
             value = roomQuery,
@@ -399,12 +500,12 @@ private fun RoomNumberModeContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            placeholder = { Text("Enter room number (e.g., 101, B2-05)...") },
+            placeholder = { Text(Strings.enterRoomNumber.get(lang)) },
             leadingIcon = { Icon(Icons.Default.DoorFront, null) },
             trailingIcon = {
                 if (roomQuery.isNotEmpty()) {
                     IconButton(onClick = { onQueryChange("") }) {
-                        Icon(Icons.Default.Close, "Clear")
+                        Icon(Icons.Default.Close, Strings.clear.get(lang))
                     }
                 }
             },
@@ -415,7 +516,7 @@ private fun RoomNumberModeContent(
         Spacer(Modifier.height(8.dp))
         if (filteredWaypoints.isNotEmpty()) {
             Text(
-                text = "${filteredWaypoints.size} rooms found",
+                text = "${filteredWaypoints.size} ${Strings.roomsFound.get(lang)}",
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.padding(horizontal = 16.dp),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -438,9 +539,9 @@ private fun RoomNumberModeContent(
             EmptyStateMessage(
                 icon = Icons.Default.MeetingRoom,
                 message = if (roomQuery.isNotEmpty())
-                    "No rooms match your search."
+                    Strings.noRoomsMatch.get(lang)
                 else
-                    "No rooms mapped yet.\nMap rooms first, then search by number."
+                    Strings.noRoomsMapped.get(lang)
             )
         }
     }
@@ -454,6 +555,8 @@ private fun NavigationPanel(
     onToggleMode: () -> Unit,
     onSwap: () -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -488,7 +591,7 @@ private fun NavigationPanel(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = startWaypoint?.label ?: "Select start point",
+                        text = startWaypoint?.label ?: Strings.selectStartPointLabel.get(lang),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (startWaypoint != null)
                             MaterialTheme.colorScheme.onSurface
@@ -522,7 +625,7 @@ private fun NavigationPanel(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = endWaypoint?.label ?: "Select destination",
+                        text = endWaypoint?.label ?: Strings.selectDestinationLabel.get(lang),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (endWaypoint != null)
                             MaterialTheme.colorScheme.onSurface
@@ -539,7 +642,7 @@ private fun NavigationPanel(
                 onClick = onSwap,
                 modifier = Modifier.padding(start = 4.dp)
             ) {
-                Icon(Icons.Default.SwapVert, "Swap")
+                Icon(Icons.Default.SwapVert, Strings.swap.get(lang))
             }
         }
     }
@@ -550,6 +653,8 @@ private fun PathResultView(
     result: PathFinder.PathResult,
     onWaypointClick: (Waypoint) -> Unit
 ) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
     Column(modifier = Modifier.fillMaxWidth()) {
         // Summary
         Card(
@@ -569,18 +674,18 @@ private fun PathResultView(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Directions, null, tint = MaterialTheme.colorScheme.primary)
                     Text("%.0f m".format(result.totalDistance), fontWeight = FontWeight.Bold)
-                    Text("Distance", style = MaterialTheme.typography.labelSmall)
+                    Text(Strings.distanceLabel.get(lang), style = MaterialTheme.typography.labelSmall)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
                     Text("${result.waypoints.size}", fontWeight = FontWeight.Bold)
-                    Text("Waypoints", style = MaterialTheme.typography.labelSmall)
+                    Text(Strings.waypointsLabel.get(lang), style = MaterialTheme.typography.labelSmall)
                 }
                 if (result.floorTransitions > 0) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.Stairs, null, tint = MaterialTheme.colorScheme.tertiary)
                         Text("${result.floorTransitions}", fontWeight = FontWeight.Bold)
-                        Text("Floor changes", style = MaterialTheme.typography.labelSmall)
+                        Text(Strings.floorChangesLabel.get(lang), style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }

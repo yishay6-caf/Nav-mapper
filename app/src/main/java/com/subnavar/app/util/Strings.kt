@@ -137,6 +137,180 @@ object Strings {
     val exportFailed = BilingualString("Export failed", "הייצוא נכשל")
     val importFailed = BilingualString("Import failed", "הייבוא נכשל")
 
+    // 3D View
+    val view3D = BilingualString("3D View", "תצוגת תלת-מימד")
+    val tilt = BilingualString("Tilt", "הטיה")
+    val pinchToZoomDragToPan = BilingualString(
+        "Pinch to zoom • Drag to pan",
+        "צביטה לזום • גרירה להזזה"
+    )
+    val floorPlan3D = BilingualString("Floor Plan 3D", "תוכנית קומה תלת-מימד")
+    val markedLocation = BilingualString("Marked location", "מיקום מסומן")
+    val noFloorPlanAvailable = BilingualString(
+        "No floor plan available\nImport one in the Map tab",
+        "אין תוכנית קומה זמינה\nייבא אחת בלשונית המפה"
+    )
+
+    // Mapping screen
+    val mappingTitle = BilingualString("Mapping", "מיפוי")
+    val waypointsPlacedCount = BilingualString("waypoints placed", "נקודות ציון הוצבו")
+    val floorPlanMode = BilingualString("Floor Plan", "תוכנית קומה")
+    val cameraMode = BilingualString("Camera", "מצלמה")
+    val splitMode = BilingualString("Split", "מפוצל")
+    val pause = BilingualString("Pause", "השהה")
+    val start = BilingualString("Start", "התחל")
+    val placeHere = BilingualString("Place Here", "הצב כאן")
+    val waypoint = BilingualString("Waypoint", "נקודת ציון")
+    val record = BilingualString("Record", "הקלט")
+    val stop = BilingualString("Stop", "עצור")
+    val locationMarkedTapPlace = BilingualString(
+        "Location marked! Tap 'Place Here' to add waypoint",
+        "מיקום סומן! לחץ על 'הצב כאן' להוספת נקודת ציון"
+    )
+    val tapOnFloorPlanToMark = BilingualString(
+        "Tap on the floor plan to mark your location",
+        "לחץ על תוכנית הקומה לסימון מיקומך"
+    )
+    val clearMark = BilingualString("Clear mark", "נקה סימון")
+    val noFloorPlanImportedMapping = BilingualString(
+        "No floor plan imported yet.\nImport a floor plan in the Map tab\nto use blueprint-based mapping.",
+        "טרם יובאה תוכנית קומה.\nייבא תוכנית קומה בלשונית המפה\nלשימוש במיפוי מבוסס שרטוט."
+    )
+    val cameraPermissionRequired = BilingualString(
+        "Camera permission is required for AR mapping",
+        "נדרשת הרשאת מצלמה למיפוי AR"
+    )
+    val placeWaypointTitle = BilingualString("Place Waypoint", "הצב נקודת ציון")
+    val placeWaypointOnPlan = BilingualString("Place Waypoint on Plan", "הצב נקודת ציון על התוכנית")
+    val locationCoords = BilingualString("Location", "מיקום")
+    val labelOptional = BilingualString("Label (optional)", "תווית (אופציונלי)")
+    val typeLabel = BilingualString("Type", "סוג")
+    val placeButton = BilingualString("Place", "הצב")
+    val floorTransitionTitle = BilingualString("Floor Transition", "מעבר בין קומות")
+    val labelStairwell = BilingualString("Label (e.g., Stairwell A)", "תווית (למשל, חדר מדרגות א)")
+    val stairsButton = BilingualString("Stairs", "מדרגות")
+    val elevatorButton = BilingualString("Elevator", "מעלית")
+    val connectedFloorIdLabel = BilingualString("Connected Floor ID", "מזהה קומה מחוברת")
+    val transitionButton = BilingualString("Transition", "מעבר")
+    val photo = BilingualString("Photo", "צילום")
+    val dragToRelocate = BilingualString(
+        "Drag waypoints to relocate them",
+        "גרור נקודות ציון כדי להזיז אותן"
+    )
+
+    // Navigation screen
+    val navigateTitle = BilingualString("Navigate", "ניווט")
+    val reset = BilingualString("Reset", "איפוס")
+    val chooseStartPoint = BilingualString(
+        "Choose how to set your starting point:",
+        "בחר כיצד להגדיר את נקודת ההתחלה:"
+    )
+    val chooseDestination = BilingualString(
+        "Choose how to set your destination:",
+        "בחר כיצד להגדיר את היעד:"
+    )
+    val searchTab = BilingualString("Search", "חיפוש")
+    val cameraTab = BilingualString("Camera", "מצלמה")
+    val roomTab = BilingualString("Room #", "חדר #")
+    val searchWaypointsPlaceholder = BilingualString(
+        "Search waypoints by name or type...",
+        "חפש נקודות ציון לפי שם או סוג..."
+    )
+    val clear = BilingualString("Clear", "נקה")
+    val noWaypointsMatch = BilingualString(
+        "No waypoints match your search.",
+        "אין נקודות ציון התואמות לחיפוש."
+    )
+    val noWaypointsMappedNav = BilingualString(
+        "No waypoints mapped yet.\nMap a building first to navigate.",
+        "אין נקודות ציון ממופות.\nמפה מבנה קודם כדי לנווט."
+    )
+    val arLocationDetection = BilingualString("AR Location Detection", "זיהוי מיקום AR")
+    val arLocationDesc = BilingualString(
+        "Use your camera to detect your current location by matching visual features against mapped waypoints.",
+        "השתמש במצלמה לזיהוי מיקומך הנוכחי על ידי התאמת מאפיינים חזותיים לנקודות ציון ממופות."
+    )
+    val startCameraScan = BilingualString("Start Camera Scan", "התחל סריקת מצלמה")
+    val requiresMappedWaypoints = BilingualString(
+        "Requires mapped waypoints with photos",
+        "דורש נקודות ציון ממופות עם תמונות"
+    )
+    val enterRoomNumber = BilingualString(
+        "Enter room number (e.g., 101, B2-05)...",
+        "הזן מספר חדר (למשל, 101, B2-05)..."
+    )
+    val roomsFound = BilingualString("rooms found", "חדרים נמצאו")
+    val noRoomsMatch = BilingualString(
+        "No rooms match your search.",
+        "אין חדרים התואמים לחיפוש."
+    )
+    val noRoomsMapped = BilingualString(
+        "No rooms mapped yet.\nMap rooms first, then search by number.",
+        "אין חדרים ממופים.\nמפה חדרים קודם ואז חפש לפי מספר."
+    )
+    val selectStartPointLabel = BilingualString("Select start point", "בחר נקודת התחלה")
+    val selectDestinationLabel = BilingualString("Select destination", "בחר יעד")
+    val swap = BilingualString("Swap", "החלף")
+    val distanceLabel = BilingualString("Distance", "מרחק")
+    val waypointsLabel = BilingualString("Waypoints", "נקודות ציון")
+    val floorChangesLabel = BilingualString("Floor changes", "שינויי קומה")
+
+    // FloorPlan screen
+    val lot25Map = BilingualString("Lot25 Map", "Lot25 Map")
+    val deleteFloor = BilingualString("Delete Floor", "מחק קומה")
+    val deleteBuildingAction = BilingualString("Delete Building", "מחק מבנה")
+    val importPlanButton = BilingualString("Import Plan", "ייבוא תוכנית")
+    val mapButton = BilingualString("Map", "מיפוי")
+    val addFloorButton = BilingualString("Add Floor", "הוסף קומה")
+    val addBuildingButton = BilingualString("Add Building", "הוסף מבנה")
+    val noBuildingsYet = BilingualString(
+        "No buildings yet.\nTap + to add one.",
+        "אין מבנים עדיין.\nלחץ על + להוספה."
+    )
+    val noFloorsYet = BilingualString(
+        "No floors yet.\nTap + to add a floor.",
+        "אין קומות עדיין.\nהוסף קומה כדי להתחיל."
+    )
+    val floorPlanImportedStatus = BilingualString("Floor plan imported", "תוכנית קומה מיובאת")
+    val noFloorPlanStatus = BilingualString("No floor plan", "אין תוכנית קומה")
+    val noFloorPlanImported = BilingualString(
+        "No floor plan imported yet.\nTap the upload button to import one.",
+        "טרם יובאה תוכנית קומה.\nלחץ על כפתור ההעלאה לייבוא."
+    )
+    val addBuildingTitle = BilingualString("Add Building", "הוסף מבנה")
+    val buildingNameLabel = BilingualString("Building Name", "שם המבנה")
+    val descriptionOptional = BilingualString("Description (optional)", "תיאור (אופציונלי)")
+    val addButton = BilingualString("Add", "הוסף")
+    val cancelButton = BilingualString("Cancel", "ביטול")
+    val addFloorTitle = BilingualString("Add Floor", "הוסף קומה")
+    val floorNameLabel = BilingualString("Floor Name (e.g., B1, B2)", "שם הקומה (למשל, B1, B2)")
+    val floorLevelLabel = BilingualString("Level Number (e.g., -1, -2)", "מספר קומה (למשל, 1-, 2-)")
+
+    // Street View
+    val streetViewTitle = BilingualString("Street View", "תצוגת רחוב")
+    val waypointPhoto = BilingualString("Waypoint Photo", "תמונת נקודת ציון")
+    val previous = BilingualString("Previous", "הקודם")
+    val next = BilingualString("Next", "הבא")
+    val noPhotosCaptured = BilingualString(
+        "No photos captured for this waypoint",
+        "לא צולמו תמונות לנקודת ציון זו"
+    )
+    val navigateToLabel = BilingualString("Navigate to:", "נווט אל:")
+
+    // Common
+    val confirmAction = BilingualString("Confirm", "אישור")
+    val cancelAction = BilingualString("Cancel", "ביטול")
+    val scanning = BilingualString("Scanning...", "סורק...")
+    val analyzingFrame = BilingualString("Analyzing frame...", "מנתח מסגרת...")
+    val startingCamera = BilingualString(
+        "Starting camera... Point at a mapped area.",
+        "מפעיל מצלמה... כוון לאזור ממופה."
+    )
+    val scanningPointCamera = BilingualString(
+        "Scanning... Point your camera at your surroundings.",
+        "סורק... כוון את המצלמה לסביבתך."
+    )
+
     fun BilingualString.get(language: LocaleManager.AppLanguage): String {
         return when (language) {
             LocaleManager.AppLanguage.ENGLISH -> en
