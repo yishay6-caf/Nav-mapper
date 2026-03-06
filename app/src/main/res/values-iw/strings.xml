@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SubNav AR</string>
+    <string name="tab_map">מפה</string>
+    <string name="tab_camera">מצלמה</string>
+    <string name="tab_settings">הגדרות</string>
+    <string name="btn_add_building">הוסף מבנה</string>
+    <string name="btn_add_floor">הוסף קומה</string>
+    <string name="btn_import_plan">ייבוא תוכנית קומה</string>
+    <string name="btn_start_mapping">התחל מיפוי</string>
+    <string name="btn_place_waypoint">הצב נקודת ציון</string>
+    <string name="btn_navigate">נווט</string>
+    <string name="btn_export">ייצוא נתונים</string>
+    <string name="btn_import">ייבוא נתונים</string>
+    <string name="label_building_name">שם המבנה</string>
+    <string name="label_floor_name">שם הקומה</string>
+    <string name="label_floor_level">מספר קומה</string>
+    <string name="label_waypoint_name">שם נקודת ציון</string>
+    <string name="msg_no_buildings">אין מבנים עדיין. לחץ על + להוספה.</string>
+    <string name="msg_no_floors">אין קומות עדיין. הוסף קומה כדי להתחיל.</string>
+    <string name="msg_mapping_active">מיפוי פעיל - הלך והצב נקודות ציון</string>
+    <string name="msg_ar_not_supported">ARCore אינו נתמך במכשיר זה</string>
+    <string name="msg_camera_permission">נדרשת הרשאת מצלמה למיפוי AR</string>
+</resources>
