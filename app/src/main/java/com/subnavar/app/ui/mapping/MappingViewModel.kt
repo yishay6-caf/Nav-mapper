@@ -18,6 +18,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class MappingViewMode {
+    FLOOR_PLAN,
+    CAMERA,
+    SPLIT
+}
+
 data class MappingUiState(
     val buildingId: Long = 0,
     val floor: Floor? = null,
@@ -31,7 +37,12 @@ data class MappingUiState(
     val showWaypointDialog: Boolean = false,
     val showFloorTransitionDialog: Boolean = false,
     val statusMessage: String = "",
-    val waypointCount: Int = 0
+    val waypointCount: Int = 0,
+    val viewMode: MappingViewMode = MappingViewMode.FLOOR_PLAN,
+    val isMarkingOnPlan: Boolean = false,
+    val pendingPlanX: Float = 0f,
+    val pendingPlanY: Float = 0f,
+    val hasFloorPlan: Boolean = false
 )
 
 @HiltViewModel
@@ -59,7 +70,8 @@ class MappingViewModel @Inject constructor(
             val count = repository.getWaypointCount(floorId)
             _uiState.value = _uiState.value.copy(
                 floor = floor,
-                waypointCount = count
+                waypointCount = count,
+                hasFloorPlan = floor?.planImagePath != null
             )
             repository.getWaypointsByFloor(floorId).collect { waypoints ->
                 _uiState.value = _uiState.value.copy(
@@ -240,4 +252,45 @@ class MappingViewModel @Inject constructor(
     }
 
     fun isARCoreSupported(): Boolean = arSessionManager.isARCoreSupported()
+
+    fun setViewMode(mode: MappingViewMode) {
+        _uiState.value = _uiState.value.copy(viewMode = mode)
+    }
+
+    fun markLocationOnPlan(planX: Float, planY: Float) {
+        _uiState.value = _uiState.value.copy(
+            isMarkingOnPlan = true,
+            pendingPlanX = planX,
+            pendingPlanY = planY,
+            statusMessage = "Location marked on plan. Tap + Waypoint to place."
+        )
+    }
+
+    fun clearPlanMark() {
+        _uiState.value = _uiState.value.copy(
+            isMarkingOnPlan = false,
+            pendingPlanX = 0f,
+            pendingPlanY = 0f
+        )
+    }
+
+    fun placeWaypointAtMark(
+        label: String?,
+        type: WaypointType,
+        capturedBitmap: Bitmap?
+    ) {
+        val state = _uiState.value
+        placeWaypoint(
+            label = label,
+            type = type,
+            planX = state.pendingPlanX,
+            planY = state.pendingPlanY,
+            capturedBitmap = capturedBitmap
+        )
+        _uiState.value = _uiState.value.copy(
+            isMarkingOnPlan = false,
+            pendingPlanX = 0f,
+            pendingPlanY = 0f
+        )
+    }
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SubNav AR</string>
+    <string name="app_name">Lot25 Map</string>
     <string name="tab_map">Map</string>
     <string name="tab_camera">Camera</string>
     <string name="tab_settings">Settings</string>

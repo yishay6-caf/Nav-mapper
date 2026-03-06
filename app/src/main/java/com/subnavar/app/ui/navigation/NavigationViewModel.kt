@@ -3,9 +3,9 @@ package com.subnavar.app.ui.navigation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.subnavar.app.domain.model.Building
-import com.subnavar.app.domain.model.Edge
 import com.subnavar.app.domain.model.Floor
 import com.subnavar.app.domain.model.Waypoint
+import com.subnavar.app.domain.model.WaypointType
 import com.subnavar.app.domain.repository.BuildingRepository
 import com.subnavar.app.nav.PathFinder
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,16 +16,28 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class StartPointMode {
+    SEARCH,
+    CAMERA_AR,
+    ROOM_NUMBER
+}
+
 data class NavigationUiState(
     val buildings: List<Building> = emptyList(),
     val selectedBuilding: Building? = null,
     val floors: List<Floor> = emptyList(),
     val allWaypoints: List<Waypoint> = emptyList(),
+    val filteredWaypoints: List<Waypoint> = emptyList(),
     val startWaypoint: Waypoint? = null,
     val endWaypoint: Waypoint? = null,
     val pathResult: PathFinder.PathResult? = null,
     val isSelectingStart: Boolean = true,
     val isCalculating: Boolean = false,
+    val startPointMode: StartPointMode = StartPointMode.SEARCH,
+    val searchQuery: String = "",
+    val roomNumberQuery: String = "",
+    val isArLocating: Boolean = false,
+    val arLocateMessage: String = "",
     val errorMessage: String? = null
 )
 
@@ -61,8 +73,78 @@ class NavigationViewModel @Inject constructor(
             val waypoints = repository.getWaypointsByBuilding(building.id)
             _uiState.value = _uiState.value.copy(
                 floors = floors,
-                allWaypoints = waypoints
+                allWaypoints = waypoints,
+                filteredWaypoints = waypoints
             )
+        }
+    }
+
+    fun setStartPointMode(mode: StartPointMode) {
+        _uiState.value = _uiState.value.copy(
+            startPointMode = mode,
+            searchQuery = "",
+            roomNumberQuery = "",
+            filteredWaypoints = _uiState.value.allWaypoints,
+            isArLocating = false,
+            arLocateMessage = ""
+        )
+    }
+
+    fun updateSearchQuery(query: String) {
+        val filtered = if (query.isBlank()) {
+            _uiState.value.allWaypoints
+        } else {
+            _uiState.value.allWaypoints.filter { wp ->
+                (wp.label ?: "").contains(query, ignoreCase = true) ||
+                wp.type.name.contains(query, ignoreCase = true)
+            }
+        }
+        _uiState.value = _uiState.value.copy(
+            searchQuery = query,
+            filteredWaypoints = filtered
+        )
+    }
+
+    fun updateRoomNumberQuery(query: String) {
+        val allWps = _uiState.value.allWaypoints
+        val roomTypes = listOf(WaypointType.ROOM, WaypointType.POI, WaypointType.ENTRANCE)
+        val filtered = if (query.isBlank()) {
+            allWps.filter { it.type in roomTypes }
+        } else {
+            allWps.filter { wp ->
+                val label = wp.label ?: ""
+                label.contains(query, ignoreCase = true)
+            }
+        }
+        _uiState.value = _uiState.value.copy(
+            roomNumberQuery = query,
+            filteredWaypoints = filtered
+        )
+    }
+
+    fun startArLocating() {
+        _uiState.value = _uiState.value.copy(
+            isArLocating = true,
+            arLocateMessage = "Point your camera at your surroundings to detect your location..."
+        )
+    }
+
+    fun stopArLocating() {
+        _uiState.value = _uiState.value.copy(
+            isArLocating = false,
+            arLocateMessage = ""
+        )
+    }
+
+    fun setArLocatedWaypoint(waypoint: Waypoint) {
+        _uiState.value = _uiState.value.copy(
+            isArLocating = false,
+            arLocateMessage = ""
+        )
+        if (_uiState.value.isSelectingStart) {
+            selectStartWaypoint(waypoint)
+        } else {
+            selectEndWaypoint(waypoint)
         }
     }
 
@@ -70,7 +152,10 @@ class NavigationViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(
             startWaypoint = waypoint,
             isSelectingStart = false,
-            pathResult = null
+            pathResult = null,
+            searchQuery = "",
+            roomNumberQuery = "",
+            filteredWaypoints = _uiState.value.allWaypoints
         )
     }
 
@@ -100,6 +185,12 @@ class NavigationViewModel @Inject constructor(
             endWaypoint = null,
             pathResult = null,
             isSelectingStart = true,
+            searchQuery = "",
+            roomNumberQuery = "",
+            filteredWaypoints = _uiState.value.allWaypoints,
+            startPointMode = StartPointMode.SEARCH,
+            isArLocating = false,
+            arLocateMessage = "",
             errorMessage = null
         )
     }
@@ -132,7 +223,10 @@ class NavigationViewModel @Inject constructor(
 
     fun toggleSelectingMode() {
         _uiState.value = _uiState.value.copy(
-            isSelectingStart = !_uiState.value.isSelectingStart
+            isSelectingStart = !_uiState.value.isSelectingStart,
+            searchQuery = "",
+            roomNumberQuery = "",
+            filteredWaypoints = _uiState.value.allWaypoints
         )
     }
 

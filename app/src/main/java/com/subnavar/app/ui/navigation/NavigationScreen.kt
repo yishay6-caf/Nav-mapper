@@ -1,5 +1,6 @@
 package com.subnavar.app.ui.navigation
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,21 +19,31 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.DoorFront
 import androidx.compose.material.icons.filled.FlagCircle
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MeetingRoom
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stairs
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -48,7 +59,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -113,43 +127,321 @@ fun NavigationScreen(
                 )
             } else if (uiState.isCalculating) {
                 LoadingIndicator()
-            } else {
-                // Waypoint list for selection
-                val selectingLabel = if (uiState.isSelectingStart) "Select start point:" else "Select destination:"
-                if (uiState.allWaypoints.isNotEmpty()) {
-                    Text(
-                        text = selectingLabel,
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        items(uiState.allWaypoints) { waypoint ->
-                            WaypointSelectionCard(
-                                waypoint = waypoint,
-                                isStart = waypoint.id == uiState.startWaypoint?.id,
-                                isEnd = waypoint.id == uiState.endWaypoint?.id,
-                                onClick = {
-                                    if (uiState.isSelectingStart) {
-                                        viewModel.selectStartWaypoint(waypoint)
-                                    } else {
-                                        viewModel.selectEndWaypoint(waypoint)
-                                    }
-                                }
-                            )
+            } else if (uiState.isSelectingStart || uiState.endWaypoint == null) {
+                val selectingLabel = if (uiState.isSelectingStart)
+                    "Choose how to set your starting point:"
+                else
+                    "Choose how to set your destination:"
+
+                Text(
+                    text = selectingLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                StartPointModeSelector(
+                    selectedMode = uiState.startPointMode,
+                    onModeSelected = { viewModel.setStartPointMode(it) }
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                when (uiState.startPointMode) {
+                    StartPointMode.SEARCH -> SearchModeContent(
+                        searchQuery = uiState.searchQuery,
+                        onQueryChange = { viewModel.updateSearchQuery(it) },
+                        filteredWaypoints = uiState.filteredWaypoints,
+                        startWaypointId = uiState.startWaypoint?.id,
+                        endWaypointId = uiState.endWaypoint?.id,
+                        onWaypointSelected = { wp ->
+                            if (uiState.isSelectingStart) viewModel.selectStartWaypoint(wp)
+                            else viewModel.selectEndWaypoint(wp)
                         }
-                    }
-                } else {
-                    EmptyStateMessage(
-                        icon = Icons.Default.Navigation,
-                        message = "No waypoints mapped yet.\nMap a building first to navigate."
+                    )
+                    StartPointMode.CAMERA_AR -> CameraArModeContent(
+                        isLocating = uiState.isArLocating,
+                        message = uiState.arLocateMessage,
+                        onStartLocating = { viewModel.startArLocating() },
+                        onStopLocating = { viewModel.stopArLocating() }
+                    )
+                    StartPointMode.ROOM_NUMBER -> RoomNumberModeContent(
+                        roomQuery = uiState.roomNumberQuery,
+                        onQueryChange = { viewModel.updateRoomNumberQuery(it) },
+                        filteredWaypoints = uiState.filteredWaypoints,
+                        startWaypointId = uiState.startWaypoint?.id,
+                        endWaypointId = uiState.endWaypoint?.id,
+                        onWaypointSelected = { wp ->
+                            if (uiState.isSelectingStart) viewModel.selectStartWaypoint(wp)
+                            else viewModel.selectEndWaypoint(wp)
+                        }
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StartPointModeSelector(
+    selectedMode: StartPointMode,
+    onModeSelected: (StartPointMode) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ModeTab(
+            icon = Icons.Default.Search,
+            label = "Search",
+            isSelected = selectedMode == StartPointMode.SEARCH,
+            onClick = { onModeSelected(StartPointMode.SEARCH) },
+            modifier = Modifier.weight(1f)
+        )
+        ModeTab(
+            icon = Icons.Default.CameraAlt,
+            label = "Camera",
+            isSelected = selectedMode == StartPointMode.CAMERA_AR,
+            onClick = { onModeSelected(StartPointMode.CAMERA_AR) },
+            modifier = Modifier.weight(1f)
+        )
+        ModeTab(
+            icon = Icons.Default.MeetingRoom,
+            label = "Room #",
+            isSelected = selectedMode == StartPointMode.ROOM_NUMBER,
+            onClick = { onModeSelected(StartPointMode.ROOM_NUMBER) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ModeTab(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (isSelected) {
+        FilledTonalButton(
+            onClick = onClick,
+            modifier = modifier.height(48.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(icon, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier.height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+        ) {
+            Icon(icon, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+@Composable
+private fun SearchModeContent(
+    searchQuery: String,
+    onQueryChange: (String) -> Unit,
+    filteredWaypoints: List<Waypoint>,
+    startWaypointId: Long?,
+    endWaypointId: Long?,
+    onWaypointSelected: (Waypoint) -> Unit
+) {
+    Column {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onQueryChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            placeholder = { Text("Search waypoints by name or type...") },
+            leadingIcon = { Icon(Icons.Default.Search, null) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(Icons.Default.Close, "Clear")
+                    }
+                }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        if (filteredWaypoints.isNotEmpty()) {
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(filteredWaypoints) { waypoint ->
+                    WaypointSelectionCard(
+                        waypoint = waypoint,
+                        isStart = waypoint.id == startWaypointId,
+                        isEnd = waypoint.id == endWaypointId,
+                        onClick = { onWaypointSelected(waypoint) }
+                    )
+                }
+            }
+        } else {
+            EmptyStateMessage(
+                icon = Icons.Default.Navigation,
+                message = if (searchQuery.isNotEmpty())
+                    "No waypoints match your search."
+                else
+                    "No waypoints mapped yet.\nMap a building first to navigate."
+            )
+        }
+    }
+}
+
+@Composable
+private fun CameraArModeContent(
+    isLocating: Boolean,
+    message: String,
+    onStartLocating: () -> Unit,
+    onStopLocating: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    Icons.Default.CameraAlt,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "AR Location Detection",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (isLocating) message
+                    else "Use your camera to detect your current location by matching visual features against mapped waypoints.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                Spacer(Modifier.height(20.dp))
+                if (isLocating) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedButton(onClick = onStopLocating) {
+                        Text("Cancel")
+                    }
+                } else {
+                    Button(
+                        onClick = onStartLocating,
+                        modifier = Modifier.fillMaxWidth(0.7f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Start Camera Scan")
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "Requires mapped waypoints with photos",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        )
+    }
+}
+
+@Composable
+private fun RoomNumberModeContent(
+    roomQuery: String,
+    onQueryChange: (String) -> Unit,
+    filteredWaypoints: List<Waypoint>,
+    startWaypointId: Long?,
+    endWaypointId: Long?,
+    onWaypointSelected: (Waypoint) -> Unit
+) {
+    Column {
+        OutlinedTextField(
+            value = roomQuery,
+            onValueChange = onQueryChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            placeholder = { Text("Enter room number (e.g., 101, B2-05)...") },
+            leadingIcon = { Icon(Icons.Default.DoorFront, null) },
+            trailingIcon = {
+                if (roomQuery.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(Icons.Default.Close, "Clear")
+                    }
+                }
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            shape = RoundedCornerShape(12.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        if (filteredWaypoints.isNotEmpty()) {
+            Text(
+                text = "${filteredWaypoints.size} rooms found",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            Spacer(Modifier.height(4.dp))
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(filteredWaypoints) { waypoint ->
+                    WaypointSelectionCard(
+                        waypoint = waypoint,
+                        isStart = waypoint.id == startWaypointId,
+                        isEnd = waypoint.id == endWaypointId,
+                        onClick = { onWaypointSelected(waypoint) }
+                    )
+                }
+            }
+        } else {
+            EmptyStateMessage(
+                icon = Icons.Default.MeetingRoom,
+                message = if (roomQuery.isNotEmpty())
+                    "No rooms match your search."
+                else
+                    "No rooms mapped yet.\nMap rooms first, then search by number."
+            )
         }
     }
 }

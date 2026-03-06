@@ -9,7 +9,7 @@ object Strings {
     data class BilingualString(val en: String, val he: String)
 
     // App general
-    val appName = BilingualString("SubNav AR", "SubNav AR")
+    val appName = BilingualString("Lot25 Map", "Lot25 Map")
     val ok = BilingualString("OK", "אישור")
     val cancel = BilingualString("Cancel", "ביטול")
     val confirm = BilingualString("Confirm", "אישור")
@@ -127,8 +127,8 @@ object Strings {
     val dataManagement = BilingualString("Data Management", "ניהול נתונים")
     val general = BilingualString("General", "כללי")
     val appInfo = BilingualString(
-        "SubNav AR - Indoor AR Navigation System\nFor underground multi-floor buildings",
-        "SubNav AR - מערכת ניווט AR פנים-מבנית\nלמבנים תת-קרקעיים רב-קומתיים"
+        "Lot25 Map - Indoor AR Navigation System\nFor underground multi-floor buildings",
+        "Lot25 Map - מערכת ניווט AR פנים-מבנית\nלמבנים תת-קרקעיים רב-קומתיים"
     )
 
     // Data sharing

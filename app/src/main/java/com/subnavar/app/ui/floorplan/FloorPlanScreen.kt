@@ -3,6 +3,7 @@ package com.subnavar.app.ui.floorplan
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -107,7 +108,7 @@ fun FloorPlanScreen(
                         when {
                             uiState.selectedFloor != null -> uiState.selectedFloor!!.name
                             uiState.selectedBuilding != null -> uiState.selectedBuilding!!.name
-                            else -> "SubNav AR"
+                            else -> "Lot25 Map"
                         }
                     )
                 },
@@ -142,13 +143,20 @@ fun FloorPlanScreen(
                 uiState.selectedFloor != null -> {
                     Column(horizontalAlignment = Alignment.End) {
                         val floorPlanPicker = rememberLauncherForActivityResult(
-                            ActivityResultContracts.GetContent()
+                            ActivityResultContracts.OpenDocument()
                         ) { uri: Uri? ->
                             uri?.let { viewModel.importFloorPlan(it) }
                         }
                         if (uiState.selectedFloor?.planImagePath == null) {
                             ExtendedFloatingActionButton(
-                                onClick = { floorPlanPicker.launch("image/*") },
+                                onClick = {
+                                    floorPlanPicker.launch(
+                                        arrayOf(
+                                            "image/*",
+                                            "application/pdf"
+                                        )
+                                    )
+                                },
                                 icon = { Icon(Icons.Default.Upload, "Import") },
                                 text = { Text("Import Plan") }
                             )
