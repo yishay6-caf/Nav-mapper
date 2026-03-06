@@ -239,8 +239,16 @@ class NavigationViewModel @Inject constructor(
         FileLogger.log("NAV_VM", "selectEndWaypoint: ${waypoint.label} (id=${waypoint.id})")
         _uiState.value = _uiState.value.copy(
             endWaypoint = waypoint,
-            pathResult = null
+            isSelectingStart = false,
+            pathResult = null,
+            searchQuery = "",
+            roomNumberQuery = "",
+            filteredWaypoints = _uiState.value.allWaypoints
         )
+    }
+
+    fun calculateNavigation() {
+        FileLogger.log("NAV_VM", "calculateNavigation")
         calculatePath()
     }
 

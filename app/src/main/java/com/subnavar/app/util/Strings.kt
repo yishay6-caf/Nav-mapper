@@ -297,6 +297,23 @@ object Strings {
     )
     val navigateToLabel = BilingualString("Navigate to:", "נווט אל:")
 
+    // Navigation actions
+    val startNavigation = BilingualString("Start Navigation", "התחל ניווט")
+    val navigating = BilingualString("Navigating", "מנווט")
+    val pathOnMap = BilingualString("Path on Map", "מסלול על המפה")
+    val showPathOnMap = BilingualString("Show Path on Map", "הצג מסלול על המפה")
+    val showStepList = BilingualString("Show Step List", "הצג רשימת צעדים")
+
+    // Media gallery
+    val mediaGallery = BilingualString("Media", "מדיה")
+    val capturedPhotos = BilingualString("Photos", "תמונות")
+    val capturedVideos = BilingualString("Videos", "סרטונים")
+    val noMediaCaptured = BilingualString(
+        "No photos or videos captured yet.\nUse the camera to capture media during mapping.",
+        "אין תמונות או סרטונים עדיין.\nהשתמש במצלמה לצילום במהלך המיפוי."
+    )
+    val openFile = BilingualString("Open", "פתח")
+
     // Common
     val confirmAction = BilingualString("Confirm", "אישור")
     val cancelAction = BilingualString("Cancel", "ביטול")

@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stairs
 import androidx.compose.material.icons.filled.Stop
@@ -137,6 +138,14 @@ fun MappingScreen(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
                 actions = {
+                    // Media gallery button
+                    IconButton(onClick = { viewModel.showMediaGallery() }) {
+                        Icon(
+                            Icons.Default.PhotoLibrary,
+                            Strings.mediaGallery.get(lang),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                     // View mode toggle buttons
                     IconButton(onClick = { viewModel.setViewMode(MappingViewMode.FLOOR_PLAN) }) {
                         Icon(
@@ -365,6 +374,15 @@ fun MappingScreen(
             isMarkingOnPlan = uiState.isMarkingOnPlan,
             planX = uiState.pendingPlanX,
             planY = uiState.pendingPlanY
+        )
+    }
+
+    // Media Gallery Dialog
+    if (uiState.showMediaGallery) {
+        MediaGalleryDialog(
+            photos = uiState.capturedPhotos,
+            videos = uiState.capturedVideos,
+            onDismiss = { viewModel.hideMediaGallery() }
         )
     }
 
@@ -809,6 +827,147 @@ private fun CameraOverlayControls(
             )
         }
     }
+}
+
+@Composable
+private fun MediaGalleryDialog(
+    photos: List<File>,
+    videos: List<File>,
+    onDismiss: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(Strings.mediaGallery.get(lang)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
+            ) {
+                if (photos.isEmpty() && videos.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = Strings.noMediaCaptured.get(lang),
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                } else {
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (photos.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "${Strings.capturedPhotos.get(lang)} (${photos.size})",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            items(photos.size) { index ->
+                                val photo = photos[index]
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(photo),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(60.dp)
+                                            .clip(RoundedCornerShape(6.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = photo.name,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = "%.1f KB".format(photo.length() / 1024.0),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                        )
+                                    }
+                                    Icon(
+                                        Icons.Default.PhotoCamera,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                        if (videos.isNotEmpty()) {
+                            item {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = "${Strings.capturedVideos.get(lang)} (${videos.size})",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            items(videos.size) { index ->
+                                val video = videos[index]
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(60.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(Color(0xFF1A1A2E)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Videocam,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = video.name,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = "%.1f MB".format(video.length() / (1024.0 * 1024.0)),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(Strings.close.get(lang)) }
+        }
+    )
 }
 
 @Composable
