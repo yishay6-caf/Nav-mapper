@@ -134,14 +134,49 @@ fun NavigationScreen(
                 onSwap = { viewModel.swapStartEnd() }
             )
 
-            // Path result
+            // Path result or Start Navigation button
             if (uiState.pathResult != null) {
                 PathResultView(
                     result = uiState.pathResult!!,
+                    floors = uiState.floors,
                     onWaypointClick = { onNavigateToStreetView(it.id) }
                 )
             } else if (uiState.isCalculating) {
                 LoadingIndicator()
+            } else if (uiState.startWaypoint != null && uiState.endWaypoint != null) {
+                // Both points selected - show Start Navigation button
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "${uiState.startWaypoint?.label ?: "Start"} \u2192 ${uiState.endWaypoint?.label ?: "End"}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.calculateNavigation() },
+                            modifier = Modifier.fillMaxWidth(0.8f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Navigation, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(Strings.startNavigation.get(lang))
+                        }
+                    }
+                }
             } else if (uiState.isSelectingStart || uiState.endWaypoint == null) {
                     val selectingLabel = if (uiState.isSelectingStart)
                         Strings.chooseStartPoint.get(lang)
@@ -336,10 +371,15 @@ private fun CameraArModeContent(
     val context = LocalContext.current
     val lang = remember { LocaleManager.getLanguage(context) }
     var hasCameraPermission by remember { mutableStateOf(false) }
+    var pendingStartLocating by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasCameraPermission = granted
+        if (granted && pendingStartLocating) {
+            pendingStartLocating = false
+            onStartLocating()
+        }
     }
 
     Column(
@@ -459,9 +499,11 @@ private fun CameraArModeContent(
                     Button(
                         onClick = {
                             if (!hasCameraPermission) {
+                                pendingStartLocating = true
                                 permissionLauncher.launch(Manifest.permission.CAMERA)
+                            } else {
+                                onStartLocating()
                             }
-                            onStartLocating()
                         },
                         modifier = Modifier.fillMaxWidth(0.7f),
                         shape = RoundedCornerShape(12.dp)
@@ -651,10 +693,12 @@ private fun NavigationPanel(
 @Composable
 private fun PathResultView(
     result: PathFinder.PathResult,
+    floors: List<com.subnavar.app.domain.model.Floor>,
     onWaypointClick: (Waypoint) -> Unit
 ) {
     val context = LocalContext.current
     val lang = remember { LocaleManager.getLanguage(context) }
+    var showMapView by remember { mutableStateOf(true) }
     Column(modifier = Modifier.fillMaxWidth()) {
         // Summary
         Card(
@@ -691,52 +735,182 @@ private fun PathResultView(
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        // Step-by-step path
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        // Toggle between map view and step list
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(result.waypoints) { waypoint ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onWaypointClick(waypoint) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (waypoint.isFloorTransition)
-                            MaterialTheme.colorScheme.tertiaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
+            FilledTonalButton(
+                onClick = { showMapView = true },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    Strings.showPathOnMap.get(lang),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (showMapView) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+            OutlinedButton(
+                onClick = { showMapView = false },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    Strings.showStepList.get(lang),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (!showMapView) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+
+        if (showMapView) {
+            // Show path on floor plan
+            PathOnFloorPlanView(
+                pathWaypoints = result.waypoints,
+                floors = floors
+            )
+        } else {
+            // Step-by-step path
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(result.waypoints) { waypoint ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onWaypointClick(waypoint) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (waypoint.isFloorTransition)
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
                         )
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = waypoint.label ?: "Waypoint ${waypoint.id}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary)
                             )
-                            Text(
-                                text = waypoint.type.name.lowercase()
-                                    .replaceFirstChar { it.uppercase() },
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = waypoint.label ?: "Waypoint ${waypoint.id}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = waypoint.type.name.lowercase()
+                                        .replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PathOnFloorPlanView(
+    pathWaypoints: List<Waypoint>,
+    floors: List<com.subnavar.app.domain.model.Floor>
+) {
+    val context = LocalContext.current
+    val lang = remember { LocaleManager.getLanguage(context) }
+    // Group waypoints by floor
+    val waypointsByFloor = pathWaypoints.groupBy { it.floorId }
+    val floorMap = floors.associateBy { it.id }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        waypointsByFloor.forEach { (floorId, floorWaypoints) ->
+            val floor = floorMap[floorId]
+            val planPath = floor?.planImagePath
+
+            Text(
+                text = floor?.name ?: "Floor $floorId",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(250.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF1A1A2E))
+                ) {
+                    if (planPath != null && java.io.File(planPath).exists()) {
+                        androidx.compose.foundation.Image(
+                            painter = coil.compose.rememberAsyncImagePainter(java.io.File(planPath)),
+                            contentDescription = Strings.pathOnMap.get(lang),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                        )
+                    }
+
+                    // Draw path lines and waypoint dots using Canvas
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        val pathColor = androidx.compose.ui.graphics.Color(0xFF2196F3)
+                        val startColor = androidx.compose.ui.graphics.Color(0xFF4CAF50)
+                        val endColor = androidx.compose.ui.graphics.Color(0xFFF44336)
+
+                        // Draw connecting lines
+                        for (i in 0 until floorWaypoints.size - 1) {
+                            val from = floorWaypoints[i]
+                            val to = floorWaypoints[i + 1]
+                            drawLine(
+                                color = pathColor,
+                                start = androidx.compose.ui.geometry.Offset(from.planX, from.planY),
+                                end = androidx.compose.ui.geometry.Offset(to.planX, to.planY),
+                                strokeWidth = 6f
+                            )
+                        }
+
+                        // Draw waypoint dots
+                        floorWaypoints.forEachIndexed { index, wp ->
+                            val dotColor = when (index) {
+                                0 -> startColor
+                                floorWaypoints.size - 1 -> endColor
+                                else -> pathColor
+                            }
+                            drawCircle(
+                                color = dotColor,
+                                radius = if (index == 0 || index == floorWaypoints.size - 1) 12f else 8f,
+                                center = androidx.compose.ui.geometry.Offset(wp.planX, wp.planY)
+                            )
+                            drawCircle(
+                                color = androidx.compose.ui.graphics.Color.White,
+                                radius = 4f,
+                                center = androidx.compose.ui.geometry.Offset(wp.planX, wp.planY)
                             )
                         }
                     }
                 }
             }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

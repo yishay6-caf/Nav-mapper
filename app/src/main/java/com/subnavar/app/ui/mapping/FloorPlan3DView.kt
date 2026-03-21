@@ -2,7 +2,7 @@ package com.subnavar.app.ui.mapping
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -327,7 +327,7 @@ private fun Waypoint3DMarker(
     Column(
         modifier = modifier
             .pointerInput(waypoint.id) {
-                detectDragGestures(
+                detectDragGesturesAfterLongPress(
                     onDragStart = { onDragStart() },
                     onDrag = { change, dragAmount ->
                         change.consume()

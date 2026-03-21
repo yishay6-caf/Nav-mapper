@@ -38,6 +38,7 @@ data class MappingUiState(
     val lastWaypointId: Long? = null,
     val showWaypointDialog: Boolean = false,
     val showFloorTransitionDialog: Boolean = false,
+    val showMediaGallery: Boolean = false,
     val statusMessage: String = "",
     val waypointCount: Int = 0,
     val viewMode: MappingViewMode = MappingViewMode.SPLIT,
@@ -48,7 +49,9 @@ data class MappingUiState(
     val isRecording: Boolean = false,
     val recordingDurationMs: Long = 0,
     val recordedSegments: Int = 0,
-    val recordedSizeMb: String = "0.0"
+    val recordedSizeMb: String = "0.0",
+    val capturedPhotos: List<java.io.File> = emptyList(),
+    val capturedVideos: List<java.io.File> = emptyList()
 )
 
 @HiltViewModel
@@ -355,6 +358,24 @@ class MappingViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun showMediaGallery() {
+        FileLogger.log("MAPPING_VM", "showMediaGallery")
+        val photos = cameraRecordingManager.getPhotoDir(buildingId, floorId).listFiles()
+            ?.filter { it.extension == "jpg" || it.extension == "jpeg" || it.extension == "png" }
+            ?.sortedByDescending { it.lastModified() }
+            ?: emptyList()
+        val videos = cameraRecordingManager.getRecordedSegments(buildingId, floorId)
+        _uiState.value = _uiState.value.copy(
+            showMediaGallery = true,
+            capturedPhotos = photos,
+            capturedVideos = videos
+        )
+    }
+
+    fun hideMediaGallery() {
+        _uiState.value = _uiState.value.copy(showMediaGallery = false)
     }
 
     fun placeWaypointAtMark(
